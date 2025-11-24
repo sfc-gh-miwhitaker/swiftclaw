@@ -80,8 +80,6 @@ USE ROLE ACCOUNTADMIN;
 -- Set statement timeout to 1 hour (deployment may take time)
 ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = 3600;
 
-SELECT 'Section 1: Role & Context Setup - COMPLETED' AS status;
-
 -- ============================================================================
 -- SECTION 2: API INTEGRATION FOR GITHUB ACCESS
 -- ============================================================================
@@ -95,8 +93,6 @@ CREATE API INTEGRATION IF NOT EXISTS SFE_GIT_API_INTEGRATION
 
 -- Verify API integration created successfully
 SHOW API INTEGRATIONS LIKE 'SFE_GIT%';
-
-SELECT 'Section 2: API Integration - COMPLETED' AS status;
 
 -- ============================================================================
 -- SECTION 3: DATABASE & GIT REPOSITORY
@@ -122,8 +118,6 @@ ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo FETCH;
 -- List files in repository (verification)
 LS @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/;
 
-SELECT 'Section 3: Database & Git Repository - COMPLETED' AS status;
-
 -- ============================================================================
 -- SECTION 4: VIRTUAL WAREHOUSE
 -- ============================================================================
@@ -145,16 +139,12 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- Verify warehouse is running
 SHOW WAREHOUSES LIKE 'SFE_DOCUMENT_AI_WH';
 
-SELECT 'Section 4: Virtual Warehouse - COMPLETED' AS status;
-
 -- ============================================================================
 -- SECTION 5: SETUP SCRIPTS (from Git Repository)
 -- ============================================================================
 
 -- Execute: Create schemas for raw, staging, analytics layers
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/01_setup/01_create_schemas.sql;
-
-SELECT 'Section 5: Setup Scripts - COMPLETED' AS status;
 
 -- ============================================================================
 -- SECTION 6: DATA SCRIPTS (from Git Repository)
@@ -165,8 +155,6 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 
 -- Execute: Load sample documents
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/02_data/02_load_sample_data.sql;
-
-SELECT 'Section 6: Data Scripts - COMPLETED' AS status;
 
 -- ============================================================================
 -- SECTION 7: AI PROCESSING SCRIPTS (from Git Repository)
@@ -187,8 +175,6 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 -- Execute: Create monitoring view
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_create_monitoring_view.sql;
 
-SELECT 'Section 7: AI Processing Scripts - COMPLETED' AS status;
-
 -- ============================================================================
 -- SECTION 8: STREAMLIT DASHBOARD
 -- ============================================================================
@@ -202,8 +188,6 @@ CREATE OR REPLACE STREAMLIT SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DO
 
 -- Verify Streamlit app created successfully
 SHOW STREAMLITS IN SCHEMA SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT;
-
-SELECT 'Section 8: Streamlit Dashboard - COMPLETED' AS status;
 
 -- ============================================================================
 -- SECTION 9: DEMO ROLE & PERMISSIONS
@@ -237,8 +221,6 @@ GRANT USAGE ON STREAMLIT SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUM
 
 -- Grant role to SYSADMIN (for easier management)
 GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
-
-SELECT 'Section 9: Demo Role & Permissions - COMPLETED' AS status;
 
 -- ============================================================================
 -- SECTION 10: DEPLOYMENT COMPLETE
