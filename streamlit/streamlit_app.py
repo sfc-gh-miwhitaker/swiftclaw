@@ -284,6 +284,30 @@ st.markdown("---")
 
 st.header("⚠️ Manual Review Queue")
 
+st.info("""
+**📋 Reference Implementation Note:**  
+This section displays documents flagged for manual review based on low confidence scores or business rules. 
+To build a production review workflow, consider these next steps:
+
+**Option 1: Interactive Streamlit Review UI**
+- Add expandable rows with `st.expander()` to show full document content
+- Implement approval/rejection buttons with `st.button()` or `st.form()`
+- Create stored procedures to update review status: `CALL UPDATE_REVIEW_STATUS(...)`
+- Add user authentication and audit trail columns (reviewed_by, reviewed_at, notes)
+
+**Option 2: Export to External Review System**
+- Download queue data with `st.download_button()` as CSV
+- Integrate with existing ticketing systems (Jira, ServiceNow)
+- Use Snowflake tasks to send alerts via email/Slack
+- Sync review decisions back to Snowflake via API/Snowpipe
+
+**Option 3: Snowflake Native Workflow**
+- Create dedicated review tables with status columns
+- Build Snowsight dashboard with data editor for inline updates
+- Use Snowflake alerts to notify reviewers of high-priority items
+- Leverage row access policies to assign documents to specific reviewers
+""")
+
 review_query = """
 SELECT 
     document_id,
@@ -308,7 +332,7 @@ LIMIT 50
 review_df = session.sql(review_query).to_pandas()
 
 if not review_df.empty:
-    st.write(f"**{len(review_df)} documents require manual review**")
+    st.write(f"**{len(review_df)} documents require manual review** (showing top 50 by priority)")
     
     # Format for display
     review_display = review_df[[
@@ -325,6 +349,15 @@ if not review_df.empty:
     review_display['Confidence'] = review_display['Confidence'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "N/A")
     
     st.dataframe(review_display, use_container_width=True, height=300)
+    
+    # Export option
+    st.download_button(
+        label="⬇️ Export Review Queue to CSV",
+        data=review_display.to_csv(index=False).encode('utf-8'),
+        file_name=f"review_queue_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        mime="text/csv",
+        help="Download this queue for offline review or import into external systems"
+    )
 else:
     st.success("✅ No documents currently require manual review!")
 
