@@ -139,31 +139,12 @@ CREATE OR REPLACE TABLE SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS (
     metadata VARIANT
 ) COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2025-12-24 | Author: SE Community';
 
-SELECT 'Analytics layer tables created: 1 fact table' AS status;
-
--- ============================================================================
--- GRANT PERMISSIONS
--- ============================================================================
-
--- Grant SELECT on raw tables
-GRANT SELECT ON ALL TABLES IN SCHEMA SFE_RAW_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
-
--- Grant SELECT, INSERT, UPDATE on staging tables
-GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA SFE_STG_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
-
--- Grant SELECT on analytics tables
-GRANT SELECT ON ALL TABLES IN SCHEMA SFE_ANALYTICS_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
-
-SELECT 'Permissions granted to SFE_DEMO_ROLE' AS status;
-
 -- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 
--- List all tables created
+-- Verify all tables created successfully
 SHOW TABLES IN SCHEMA SFE_RAW_ENTERTAINMENT;
 SHOW TABLES IN SCHEMA SFE_STG_ENTERTAINMENT;
 SHOW TABLES IN SCHEMA SFE_ANALYTICS_ENTERTAINMENT;
-
-SELECT 'Table creation complete - 7 tables created' AS final_status;
 

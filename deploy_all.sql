@@ -140,14 +140,29 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 SHOW WAREHOUSES LIKE 'SFE_DOCUMENT_AI_WH';
 
 -- ============================================================================
--- SECTION 5: SETUP SCRIPTS (from Git Repository)
+-- SECTION 5: DEMO ROLE CREATION (Required for script grants)
+-- ============================================================================
+
+-- Create demo application role BEFORE executing scripts
+-- (Scripts will grant permissions to this role)
+CREATE ROLE IF NOT EXISTS SFE_DEMO_ROLE
+    COMMENT = 'DEMO: Application role for AI document processing demo | Author: SE Community';
+
+-- Grant warehouse usage (needed for script execution)
+GRANT USAGE ON WAREHOUSE SFE_DOCUMENT_AI_WH TO ROLE SFE_DEMO_ROLE;
+
+-- Grant database usage (needed for schema access)
+GRANT USAGE ON DATABASE SNOWFLAKE_EXAMPLE TO ROLE SFE_DEMO_ROLE;
+
+-- ============================================================================
+-- SECTION 6: SETUP SCRIPTS (from Git Repository)
 -- ============================================================================
 
 -- Execute: Create schemas for raw, staging, analytics layers
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/01_setup/01_create_schemas.sql;
 
 -- ============================================================================
--- SECTION 6: DATA SCRIPTS (from Git Repository)
+-- SECTION 7: DATA SCRIPTS (from Git Repository)
 -- ============================================================================
 
 -- Execute: Create tables for raw documents
@@ -157,7 +172,7 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/02_data/02_load_sample_data.sql;
 
 -- ============================================================================
--- SECTION 7: AI PROCESSING SCRIPTS (from Git Repository)
+-- SECTION 8: AI PROCESSING SCRIPTS (from Git Repository)
 -- ============================================================================
 
 -- Execute: AI_PARSE_DOCUMENT processing
@@ -176,7 +191,7 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_create_monitoring_view.sql;
 
 -- ============================================================================
--- SECTION 8: STREAMLIT DASHBOARD
+-- SECTION 9: STREAMLIT DASHBOARD
 -- ============================================================================
 
 -- Create Streamlit app from Git repository
@@ -190,20 +205,10 @@ CREATE OR REPLACE STREAMLIT SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DO
 SHOW STREAMLITS IN SCHEMA SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT;
 
 -- ============================================================================
--- SECTION 9: DEMO ROLE & PERMISSIONS
+-- SECTION 10: FINALIZE ROLE PERMISSIONS
 -- ============================================================================
 
--- Create demo application role
-CREATE ROLE IF NOT EXISTS SFE_DEMO_ROLE
-    COMMENT = 'DEMO: Application role for AI document processing demo | Author: SE Community';
-
--- Grant warehouse usage
-GRANT USAGE ON WAREHOUSE SFE_DOCUMENT_AI_WH TO ROLE SFE_DEMO_ROLE;
-
--- Grant database usage
-GRANT USAGE ON DATABASE SNOWFLAKE_EXAMPLE TO ROLE SFE_DEMO_ROLE;
-
--- Grant schema usage (all SFE_* schemas)
+-- Grant schema usage (schemas created by setup scripts)
 GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
 GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
 GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
@@ -223,7 +228,7 @@ GRANT USAGE ON STREAMLIT SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUM
 GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
 
 -- ============================================================================
--- SECTION 10: DEPLOYMENT COMPLETE
+-- SECTION 11: DEPLOYMENT COMPLETE
 -- ============================================================================
 
 SELECT '========================================' AS message

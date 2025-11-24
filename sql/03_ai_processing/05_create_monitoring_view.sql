@@ -116,16 +116,11 @@ SELECT
     CURRENT_TIMESTAMP() AS metrics_generated_at
 FROM pipeline_stats;
 
--- Grant SELECT permission to demo role
-GRANT SELECT ON VIEW V_PROCESSING_METRICS TO ROLE SFE_DEMO_ROLE;
-
-SELECT 'Monitoring view created: V_PROCESSING_METRICS' AS status;
-
 -- ============================================================================
--- TEST MONITORING VIEW
+-- VERIFICATION
 -- ============================================================================
 
--- Query the monitoring view
+-- Verify monitoring view returns expected metrics
 SELECT * FROM V_PROCESSING_METRICS;
 
 -- Sample queries for dashboard widgets
