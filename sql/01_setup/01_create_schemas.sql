@@ -22,10 +22,8 @@
  * Created: 2025-11-24 | Expires: 2025-12-24
  ******************************************************************************/
 
--- Use ACCOUNTADMIN for schema creation (already set in deploy_all.sql)
--- USE ROLE ACCOUNTADMIN;
-
--- Set database context
+-- Set context (ensure ACCOUNTADMIN role for schema creation)
+USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
 
 -- ============================================================================

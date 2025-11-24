@@ -25,7 +25,8 @@
  * Created: 2025-11-24 | Expires: 2025-12-24
  ******************************************************************************/
 
--- Set context
+-- Set context (ensure ACCOUNTADMIN role for data loading)
+USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
 USE SCHEMA SFE_RAW_ENTERTAINMENT;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
@@ -61,7 +62,8 @@ SELECT
         '- Miscellaneous: $' || (amount * 0.10) || '\n' ||
         '---\n' ||
         'Please remit payment to: Global Media Corp\n' ||
-        'Account: 1234567890\n'
+        'Account: 1234567890\n',
+        'UTF-8'
     ) AS pdf_content,
     vendor_name,
     invoice_date AS upload_date,
@@ -79,14 +81,13 @@ SELECT
 FROM (
     SELECT
         CASE 
-            WHEN seq <= 400 THEN ARRAY_CONSTRUCT('Acme Production Services', 'Global Studios Inc', 'MediaTech Solutions', 'Film Finance Co', 'Post House LLC', 'Sound Design Group', 'VFX Masters', 'Lighting Specialists', 'Equipment Rentals Inc', 'Catering Services Corp')[UNIFORM(0, 9, RANDOM())]
+            WHEN SEQ4() <= 400 THEN ARRAY_CONSTRUCT('Acme Production Services', 'Global Studios Inc', 'MediaTech Solutions', 'Film Finance Co', 'Post House LLC', 'Sound Design Group', 'VFX Masters', 'Lighting Specialists', 'Equipment Rentals Inc', 'Catering Services Corp')[UNIFORM(0, 9, RANDOM())]
             ELSE ARRAY_CONSTRUCT('Servicios de Producción SA', 'Estudios Globales', 'Soluciones MediaTech', 'Finanzas Cinematográficas', 'Casa de Post-Producción')[UNIFORM(0, 4, RANDOM())]
         END AS vendor_name,
-        'INV-2024-' || LPAD(seq, 6, '0') AS invoice_number,
+        'INV-2024-' || LPAD(SEQ4(), 6, '0') AS invoice_number,
         DATEADD(day, -UNIFORM(0, 180, RANDOM()), CURRENT_DATE()) AS invoice_date,
-        CASE WHEN seq <= 400 THEN 'en' ELSE 'es' END AS original_language,
-        UNIFORM(5000, 150000, RANDOM()) AS amount,
-        seq
+        CASE WHEN SEQ4() <= 400 THEN 'en' ELSE 'es' END AS original_language,
+        UNIFORM(5000, 150000, RANDOM()) AS amount
     FROM TABLE(GENERATOR(ROWCOUNT => 500))
 );
 
@@ -122,7 +123,8 @@ SELECT
         '- Title C: ' || (title_count * 0.5) || ' units, $' || (total_royalties * 0.25) || '\n' ||
         '---\n' ||
         'Payment Due: ' || payment_due_date || '\n' ||
-        'Remit to: Global Media Corp Rights Management\n'
+        'Remit to: Global Media Corp Rights Management\n',
+        'UTF-8'
     ) AS pdf_content,
     territory,
     period_start_date,
@@ -142,17 +144,16 @@ FROM (
     SELECT
         ARRAY_CONSTRUCT('North America', 'Europe', 'Asia Pacific', 'Latin America', 'Middle East', 'Africa', 'United Kingdom', 'Australia', 'Japan', 'China')[UNIFORM(0, 9, RANDOM())] AS territory,
         CASE 
-            WHEN seq <= 150 THEN '2024-07-01'::DATE
+            WHEN SEQ4() <= 150 THEN '2024-07-01'::DATE
             ELSE '2024-10-01'::DATE
         END AS period_start_date,
         CASE 
-            WHEN seq <= 150 THEN '2024-09-30'::DATE
+            WHEN SEQ4() <= 150 THEN '2024-09-30'::DATE
             ELSE '2024-12-31'::DATE
         END AS period_end_date,
         UNIFORM(25000, 500000, RANDOM()) AS total_royalties,
         UNIFORM(100, 10000, RANDOM()) AS title_count,
-        DATEADD(day, 30, period_end_date) AS payment_due_date,
-        seq
+        DATEADD(day, 30, period_end_date) AS payment_due_date
     FROM TABLE(GENERATOR(ROWCOUNT => 300))
 );
 
@@ -192,7 +193,8 @@ SELECT
         '5. Territory: ' || territory || '\n' ||
         '---\n' ||
         '[Additional terms and conditions would appear here]\n' ||
-        '[Signature pages would follow]\n'
+        '[Signature pages would follow]\n',
+        'UTF-8'
     ) AS pdf_content,
     contract_type,
     effective_date,
@@ -217,8 +219,7 @@ FROM (
         UNIFORM(50000, 5000000, RANDOM()) AS contract_value,
         UNIFORM(1, 5, RANDOM()) AS term_years,
         ARRAY_CONSTRUCT('Worldwide', 'North America', 'Europe', 'Asia', 'Latin America')[UNIFORM(0, 4, RANDOM())] AS territory,
-        ARRAY_CONSTRUCT('Monthly', 'Quarterly', 'Annual', 'Milestone-based', 'Net 30')[UNIFORM(0, 4, RANDOM())] AS payment_schedule,
-        seq
+        ARRAY_CONSTRUCT('Monthly', 'Quarterly', 'Annual', 'Milestone-based', 'Net 30')[UNIFORM(0, 4, RANDOM())] AS payment_schedule
     FROM TABLE(GENERATOR(ROWCOUNT => 50))
 );
 

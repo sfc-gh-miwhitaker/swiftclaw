@@ -17,9 +17,17 @@
  *   - SNOWFLAKE_EXAMPLE.GIT_REPOS schema (shared across demos)
  *   - Shared API integrations (if used by other demos)
  * 
- * USAGE:
- *   Copy this entire script into Snowsight and click "Run All"
- *   OR run from command line:
+ * 🗑️  DESIGNED FOR "RUN ALL" EXECUTION:
+ *   1. Copy this ENTIRE script (Ctrl+A or Cmd+A to select all)
+ *   2. Open Snowsight → https://app.snowflake.com
+ *   3. Create new worksheet: Click "+" → "SQL Worksheet"
+ *   4. Paste the entire script (Ctrl+V or Cmd+V)
+ *   5. REVIEW the warning summary below (lines 47-62)
+ *   6. Click "Run All" button (▶️ dropdown → "Run All")
+ *   7. All demo objects will be deleted immediately
+ *   8. No undo available - objects are permanently removed
+ * 
+ * OR run from command line:
  *   snowsql -f sql/99_cleanup/teardown_all.sql
  * 
  * Author: SE Community
@@ -30,38 +38,53 @@
 USE ROLE ACCOUNTADMIN;
 
 -- ============================================================================
--- CONFIRMATION PROMPT
+-- PRE-CLEANUP CHECKS (Optional but Recommended)
+-- ============================================================================
+-- Run these queries BEFORE cleanup to see what will be removed:
+
+-- Check current schemas
+-- SHOW SCHEMAS LIKE 'SFE_%' IN DATABASE SNOWFLAKE_EXAMPLE;
+
+-- Check if API integration is used by other demos
+-- SHOW GIT REPOSITORIES; -- If multiple repos use SFE_GIT_API_INTEGRATION, consider keeping it
+
+-- Check warehouse usage
+-- SHOW WAREHOUSES LIKE 'SFE_%';
+
+-- ============================================================================
+-- ⚠️  WARNING SUMMARY (Review before executing)
+-- ============================================================================
+--
+-- When you click "Run All", these objects will be IMMEDIATELY deleted:
+--   - Streamlit app: SFE_DOCUMENT_DASHBOARD
+--   - 3 schemas: SFE_RAW_ENTERTAINMENT, SFE_STG_ENTERTAINMENT, SFE_ANALYTICS_ENTERTAINMENT
+--   - 7 tables + 1 view across all schemas
+--   - Warehouse: SFE_DOCUMENT_AI_WH
+--   - Git repository: sfe_swiftclaw_repo
+--   - API Integration: SFE_GIT_API_INTEGRATION
+--   - Role: SFE_DEMO_ROLE
+--
+-- Protected (will NOT be deleted):
+--   - SNOWFLAKE_EXAMPLE database (may contain other demos)
+--   - SNOWFLAKE_EXAMPLE.GIT_REPOS schema (may contain other repos)
+--
+-- IF YOU'RE SURE: Click "Run All" button to execute cleanup
+-- IF NOT SURE: Close this worksheet without executing
 -- ============================================================================
 
-SELECT '⚠️  WARNING: This will delete all demo objects!' AS message
-UNION ALL
-SELECT 'Objects to be deleted:' AS message
-UNION ALL
-SELECT '  - Streamlit app: SFE_DOCUMENT_DASHBOARD' AS message
-UNION ALL
-SELECT '  - 3 schemas: SFE_RAW_ENTERTAINMENT, SFE_STG_ENTERTAINMENT, SFE_ANALYTICS_ENTERTAINMENT' AS message
-UNION ALL
-SELECT '  - 7 tables + 1 view across all schemas' AS message
-UNION ALL
-SELECT '  - Warehouse: SFE_DOCUMENT_AI_WH' AS message
-UNION ALL
-SELECT '  - Git repository: sfe_swiftclaw_repo' AS message
-UNION ALL
-SELECT '  - API Integration: SFE_GIT_API_INTEGRATION' AS message
-UNION ALL
-SELECT '  - Role: SFE_DEMO_ROLE' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'Protected (NOT deleted):' AS message
-UNION ALL
-SELECT '  - SNOWFLAKE_EXAMPLE database' AS message
-UNION ALL
-SELECT '  - SNOWFLAKE_EXAMPLE.GIT_REPOS schema' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'To proceed, run the DROP commands below.' AS message;
+-- ============================================================================
+-- CLEANUP EXECUTION ORDER
+-- ============================================================================
+-- Objects are dropped in dependency order:
+--   1. Streamlit apps (depend on schemas/tables)
+--   2. Views (depend on tables)
+--   3. Tables (depend on schemas)
+--   4. Schemas (depend on database)
+--   5. Git repositories (can be dropped anytime)
+--   6. Warehouses (can be dropped anytime)
+--   7. API integrations (can be dropped anytime, but check if shared)
+--   8. Roles (should be dropped last)
+-- ============================================================================
 
 -- ============================================================================
 -- STEP 1: DROP STREAMLIT APP
@@ -69,7 +92,7 @@ SELECT 'To proceed, run the DROP commands below.' AS message;
 
 DROP STREAMLIT IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUMENT_DASHBOARD;
 
-SELECT 'Step 1: Streamlit app dropped' AS status;
+-- Streamlit app has been dropped
 
 -- ============================================================================
 -- STEP 2: DROP VIEWS
@@ -77,7 +100,7 @@ SELECT 'Step 1: Streamlit app dropped' AS status;
 
 DROP VIEW IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_METRICS;
 
-SELECT 'Step 2: Views dropped' AS status;
+-- View has been dropped
 
 -- ============================================================================
 -- STEP 3: DROP TABLES (in dependency order)
@@ -96,25 +119,31 @@ DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_CONTRACTS;
 DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_ROYALTY_STATEMENTS;
 DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_INVOICES;
 
-SELECT 'Step 3: Tables dropped (7 tables)' AS status;
+-- All tables have been dropped (7 total)
 
 -- ============================================================================
 -- STEP 4: DROP SCHEMAS
 -- ============================================================================
+-- NOTE: Schemas are dropped without CASCADE to ensure we've explicitly
+--       cleaned up all contained objects in previous steps. This provides
+--       a safety check - if a schema drop fails, we know objects remain.
 
 DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT;
 DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT;
 DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT;
 
-SELECT 'Step 4: Schemas dropped (3 schemas)' AS status;
+-- All schemas have been dropped (3 total)
 
 -- ============================================================================
 -- STEP 5: DROP GIT REPOSITORY
 -- ============================================================================
+-- NOTE: We drop ONLY this demo's Git repository (sfe_swiftclaw_repo) from
+--       the shared GIT_REPOS schema. The GIT_REPOS schema itself is preserved
+--       as it may contain repositories from other demo projects.
 
 DROP GIT REPOSITORY IF EXISTS SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo;
 
-SELECT 'Step 5: Git repository dropped' AS status;
+-- Git repository has been dropped (sfe_swiftclaw_repo only - GIT_REPOS schema preserved)
 
 -- ============================================================================
 -- STEP 6: DROP WAREHOUSE
@@ -122,15 +151,19 @@ SELECT 'Step 5: Git repository dropped' AS status;
 
 DROP WAREHOUSE IF EXISTS SFE_DOCUMENT_AI_WH;
 
-SELECT 'Step 6: Warehouse dropped' AS status;
+-- Warehouse has been dropped
 
 -- ============================================================================
 -- STEP 7: DROP API INTEGRATION
 -- ============================================================================
+-- NOTE: SFE_GIT_API_INTEGRATION may be shared by multiple demo projects.
+--       If other demos are using it, you may want to keep it and skip this step.
+--       To check: SHOW API INTEGRATIONS LIKE 'SFE_GIT%';
 
 DROP API INTEGRATION IF EXISTS SFE_GIT_API_INTEGRATION;
 
-SELECT 'Step 7: API integration dropped' AS status;
+-- API integration has been dropped (SFE_GIT_API_INTEGRATION)
+-- WARNING: If other demos use this API integration, they will be affected
 
 -- ============================================================================
 -- STEP 8: DROP DEMO ROLE
@@ -138,44 +171,49 @@ SELECT 'Step 7: API integration dropped' AS status;
 
 DROP ROLE IF EXISTS SFE_DEMO_ROLE;
 
-SELECT 'Step 8: Demo role dropped' AS status;
+-- Demo role has been dropped
 
 -- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 
 -- Verify all demo objects are gone
-SHOW STREAMLITS IN DATABASE SNOWFLAKE_EXAMPLE;
-SHOW SCHEMAS IN DATABASE SNOWFLAKE_EXAMPLE LIKE 'SFE_%';
+-- Note: These should return empty result sets if cleanup was successful
+
+-- Check for remaining SFE_* schemas
+SHOW SCHEMAS LIKE 'SFE_%' IN DATABASE SNOWFLAKE_EXAMPLE;
+
+-- Check for remaining SFE_* warehouses
 SHOW WAREHOUSES LIKE 'SFE_%';
+
+-- Check for remaining SFE_* API integrations
 SHOW API INTEGRATIONS LIKE 'SFE_%';
+
+-- Check for remaining SFE_* roles
 SHOW ROLES LIKE 'SFE_%';
 
-SELECT '========================================' AS message
-UNION ALL
-SELECT 'CLEANUP COMPLETE' AS message
-UNION ALL
-SELECT '========================================' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'All demo objects have been removed.' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'Preserved objects:' AS message
-UNION ALL
-SELECT '  - SNOWFLAKE_EXAMPLE database' AS message
-UNION ALL
-SELECT '  - SNOWFLAKE_EXAMPLE.GIT_REPOS schema' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'To verify cleanup:' AS message
-UNION ALL
-SELECT '  SHOW SCHEMAS IN DATABASE SNOWFLAKE_EXAMPLE LIKE ''SFE_%'';' AS message
-UNION ALL
-SELECT '  (Should return 0 results)' AS message
-UNION ALL
-SELECT '========================================' AS message;
+-- Check for remaining git repositories in GIT_REPOS schema
+SHOW GIT REPOSITORIES IN SCHEMA SNOWFLAKE_EXAMPLE.GIT_REPOS;
+
+-- ============================================================================
+-- ✅ CLEANUP COMPLETE
+-- ============================================================================
+--
+-- Removed Objects:
+--   ✓ Streamlit app: SFE_DOCUMENT_DASHBOARD
+--   ✓ 3 schemas: SFE_RAW_ENTERTAINMENT, SFE_STG_ENTERTAINMENT, SFE_ANALYTICS_ENTERTAINMENT
+--   ✓ 7 tables + 1 view
+--   ✓ Warehouse: SFE_DOCUMENT_AI_WH
+--   ✓ Git repository: sfe_swiftclaw_repo
+--   ✓ API Integration: SFE_GIT_API_INTEGRATION (if not shared)
+--   ✓ Role: SFE_DEMO_ROLE
+--
+-- Preserved Objects (Shared Infrastructure):
+--   • SNOWFLAKE_EXAMPLE database (may contain other demos)
+--   • SNOWFLAKE_EXAMPLE.GIT_REPOS schema (may contain other repos)
+--
+-- Verification Commands:
+--   Run the SHOW commands above to confirm cleanup
+--   All should return 0 results for SFE_* objects
+-- ============================================================================
 

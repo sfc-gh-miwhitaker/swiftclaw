@@ -28,6 +28,7 @@ This demo showcases Snowflake's AI Functions for automating document processing 
 **Key Features:**
 - 🤖 **AI_PARSE_DOCUMENT** - Extract text and preserve table layouts from PDFs
 - 🌐 **AI_TRANSLATE** - Context-aware translation for entertainment terms
+  - 🔬 **Quality Test Included**: Russian names validation (addresses real-world issue with occupation-based surnames)
 - 🔍 **AI_FILTER** - Natural language document classification
 - 📊 **AI_AGG** - Aggregate insights across document collections
 - 📱 **Streamlit UI** - Business-user friendly dashboard

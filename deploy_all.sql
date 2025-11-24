@@ -7,13 +7,14 @@
  * This demo uses Snowflake AI Functions current as of November 2024.
  * After expiration, this repository will be archived.
  * 
- * USAGE IN SNOWSIGHT:
- *   1. Copy this ENTIRE script
- *   2. Open Snowsight (https://app.snowflake.com)
- *   3. Click "+" → "SQL Worksheet"
- *   4. Paste the entire script
- *   5. Click "Run All" (▶️ dropdown → Run All)
- *   6. Wait ~10 minutes for complete deployment
+ * 🚀 DESIGNED FOR "RUN ALL" EXECUTION:
+ *   1. Copy this ENTIRE script (Ctrl+A or Cmd+A to select all)
+ *   2. Open Snowsight → https://app.snowflake.com
+ *   3. Create new worksheet: Click "+" → "SQL Worksheet"
+ *   4. Paste the entire script (Ctrl+V or Cmd+V)
+ *   5. Click "Run All" button (▶️ dropdown → "Run All")
+ *   6. Wait ~10 minutes - script executes all steps automatically
+ *   7. No manual intervention required - fully automated deployment
  * 
  * WHAT THIS SCRIPT DOES:
  *   - Creates API integration for GitHub repository access

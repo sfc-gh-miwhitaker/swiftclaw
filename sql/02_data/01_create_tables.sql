@@ -29,7 +29,8 @@
  * Created: 2025-11-24 | Expires: 2025-12-24
  ******************************************************************************/
 
--- Set context
+-- Set context (ensure ACCOUNTADMIN role for table creation)
+USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
