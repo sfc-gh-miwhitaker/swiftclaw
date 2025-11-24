@@ -47,28 +47,22 @@
 -- ============================================================================
 
 -- CRITICAL: Check if demo has expired (30 days from creation)
-DO $$
-DECLARE
-    expiration_date DATE := '2025-12-24';
-    current_date DATE := CURRENT_DATE();
-BEGIN
-    IF (current_date > expiration_date) THEN
-        RETURN 'ERROR: This demo expired on ' || expiration_date || '. ' ||
-               'Demo projects are maintained for 30 days only. ' ||
-               'Contact your Snowflake account team for updated versions.';
-    END IF;
-    
-    -- Warn if expiration approaching (within 7 days)
-    IF (DATEDIFF('day', current_date, expiration_date) <= 7) THEN
-        RETURN 'WARNING: This demo expires in ' || 
-               DATEDIFF('day', current_date, expiration_date) || 
-               ' days (' || expiration_date || '). Plan accordingly.';
-    END IF;
-    
-    RETURN 'Demo is active. Expires: ' || expiration_date || 
-           ' (' || DATEDIFF('day', current_date, expiration_date) || ' days remaining)';
-END;
-$$;
+-- This will display a warning/error message but allow execution to continue
+SELECT 
+    CASE 
+        WHEN CURRENT_DATE() > '2025-12-24'::DATE THEN
+            '❌ ERROR: This demo expired on 2025-12-24. ' ||
+            'Demo projects are maintained for 30 days only. ' ||
+            'Contact your Snowflake account team for updated versions.'
+        WHEN DATEDIFF('day', CURRENT_DATE(), '2025-12-24'::DATE) <= 7 THEN
+            '⚠️  WARNING: This demo expires in ' || 
+            DATEDIFF('day', CURRENT_DATE(), '2025-12-24'::DATE) || 
+            ' days (2025-12-24). Plan accordingly.'
+        ELSE
+            '✅ Demo is active. Expires: 2025-12-24 (' || 
+            DATEDIFF('day', CURRENT_DATE(), '2025-12-24'::DATE) || 
+            ' days remaining)'
+    END AS EXPIRATION_STATUS;
 
 -- ============================================================================
 -- SECTION 1: ROLE & CONTEXT SETUP

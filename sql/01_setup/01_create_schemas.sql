@@ -57,5 +57,5 @@ CREATE SCHEMA IF NOT EXISTS SFE_ANALYTICS_ENTERTAINMENT
 -- ============================================================================
 
 -- Verify all SFE_* schemas created successfully
-SHOW SCHEMAS IN DATABASE SNOWFLAKE_EXAMPLE LIKE 'SFE_%';
+SHOW SCHEMAS LIKE 'SFE_%' IN DATABASE SNOWFLAKE_EXAMPLE;
 
