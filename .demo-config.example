@@ -1,0 +1,23 @@
+# Demo Project Configuration Template
+# Single source of truth for expiration dates and project metadata
+# Copy this file to .demo-config and fill in your values
+
+# Project Information
+DEMO_PROJECT_NAME=your-project-name
+DEMO_AUTHOR=SE Community
+DEMO_PURPOSE=Brief description of what this demo demonstrates
+
+# Expiration Management
+DEMO_CREATED_DATE=YYYY-MM-DD
+DEMO_EXPIRATION_DATE=YYYY-MM-DD
+
+# Repository
+GITHUB_REPO_URL=https://github.com/your-org/your-repo
+
+# Usage:
+#   1. Copy this file: cp .demo-config.example .demo-config
+#   2. Fill in actual values
+#   3. Run: extendexpiration 30 (to extend by 30 days)
+#   4. This will update all files from this config
+
+
