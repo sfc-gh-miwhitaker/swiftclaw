@@ -171,6 +171,29 @@ See `diagrams/` for detailed architecture diagrams.
 
 ---
 
+## Deployment Model
+
+**Mode:** Snowsight-Only (100% Native Snowflake)
+
+This demo is designed for complete execution within Snowflake with no external dependencies:
+
+- **Deployment:** Copy/paste `deploy_all.sql` into Snowsight → Click "Run All" (10 min)
+- **UI:** Native Snowflake Streamlit app (no local web server)
+- **Processing:** All AI operations run on Snowflake compute (no external ML services)
+- **Storage:** All data stays in Snowflake (no external databases)
+- **Tools Required:** None - Just a web browser and Snowflake account
+
+**Why This Matters:**
+- ✅ No local Python/Node.js runtime needed
+- ✅ No `tools/` scripts or command-line utilities
+- ✅ No environment setup or dependency installation
+- ✅ Works from any device with browser access to Snowsight
+- ✅ Follows "User Experience Principle" - minimal friction, maximum simplicity
+
+**Architecture Compliance:** This demonstrates the **Native Snowflake Architecture** pattern mandated by core rules - all workloads execute inside Snowflake unless technically impossible.
+
+---
+
 ## Sample Queries
 
 ### 1. Parse Invoice Document
@@ -240,6 +263,37 @@ This code demonstrates production-grade architectural patterns and best practice
 - Review `docs/04-TROUBLESHOOTING.md` for common issues
 - Check Snowflake documentation for AI Functions updates
 - Contact your Snowflake account team for production guidance
+
+---
+
+## Development Notes
+
+### Git Ignore Strategy
+
+**Note:** This repository does not contain a `.gitignore` file by design (stealth compliance).
+
+**Why No .gitignore:**  
+Per SE community standards, `.gitignore` files that reference `.cursor/` or other AI tooling reveal development methodology. Instead, we use a **global git ignore** strategy:
+
+- **Global Ignore File:** `~/.config/git/ignore` (symlinked from `~/dotfiles/git/gitignore_global`)
+- **Coverage:** 516 patterns including `.cursor/`, `.vscode/`, OS files, credentials, language environments
+- **Benefit:** Universal protection across ALL repos without revealing tooling in any individual repository
+
+**Setup:**  
+If you don't have global ignore configured:
+```bash
+git config --global core.excludesfile ~/.config/git/ignore
+```
+
+**What's Protected:**
+- AI tooling: `.cursor/`, `.cursornotes/`, `.aidigestignore`
+- IDEs: `.vscode/`, `.idea/`, `*.swp`
+- Credentials: `*.pem`, `*.key`, `.env`, `config/.env`
+- OS: `.DS_Store`, `Thumbs.db`, `desktop.ini`
+- Languages: `venv/`, `node_modules/`, `__pycache__/`, `target/`
+
+**Project-Specific Exclusions:**  
+Use `.git/info/exclude` for patterns unique to this project (not committed to repo).
 
 ---
 

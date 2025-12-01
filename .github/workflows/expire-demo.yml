@@ -1,0 +1,113 @@
+name: Demo Expiration Check
+
+# Purpose: Auto-archive this demo repository after expiration date
+# This ensures stale demos with outdated syntax don't harm user experience
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  check-expiration:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check if demo has expired
+        run: |
+          EXPIRE_DATE="2025-12-24"  # Last updated: 2025-12-01
+          TODAY=$(date +%Y-%m-%d)
+          
+          echo "Demo expiration date: $EXPIRE_DATE"
+          echo "Today's date: $TODAY"
+          
+          if [[ "$TODAY" > "$EXPIRE_DATE" ]]; then
+            echo "❌ Demo expired on $EXPIRE_DATE"
+            echo "EXPIRED=true" >> $GITHUB_ENV
+          else
+            DAYS_LEFT=$(( ($(date -d "$EXPIRE_DATE" +%s) - $(date -d "$TODAY" +%s)) / 86400 ))
+            echo "✅ Demo still active. $DAYS_LEFT days remaining until $EXPIRE_DATE"
+            echo "EXPIRED=false" >> $GITHUB_ENV
+          fi
+      
+      - name: Archive repository if expired
+        if: env.EXPIRED == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Archive the repository
+            await github.rest.repos.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              archived: true
+            });
+            
+            console.log('✅ Repository archived successfully');
+            
+            // Optionally: Make repository private
+            // await github.rest.repos.update({
+            //   owner: context.repo.owner,
+            //   repo: context.repo.repo,
+            //   private: true
+            // });
+      
+      - name: Create expiration issue (7 days warning)
+        if: env.EXPIRED == 'false'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expireDate = new Date('2025-12-24');
+            const today = new Date();
+            const daysLeft = Math.ceil((expireDate - today) / (1000 * 60 * 60 * 24));
+            
+            if (daysLeft <= 7 && daysLeft > 0) {
+              // Check if warning issue already exists
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'demo-expiration'
+              });
+              
+              if (issues.data.length === 0) {
+                // Create warning issue
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: `⚠️ Demo Expires in ${daysLeft} Days`,
+                  body: `This demo repository will expire on **2025-12-24** (${daysLeft} days from now).
+                  
+**Actions Required:**
+- [ ] Extend expiration date if demo is still needed: Run \`extendexpiration 30\`
+- [ ] Archive manually if demo is no longer needed
+- [ ] Update dependencies and validate syntax before extending
+
+**What Happens After Expiration:**
+- Repository will be automatically archived
+- No further updates possible without unarchiving
+- Users searching GitHub will see it as archived/inactive
+
+**To Extend Expiration:**
+\`\`\`bash
+# Clone the repo
+git clone https://github.com/${context.repo.owner}/${context.repo.repo}
+cd ${context.repo.repo}
+
+# Run extendexpiration command (via Cursor)
+# This updates all files from .demo-config
+extendexpiration 30
+\`\`\`
+
+This issue was automatically created by the demo expiration workflow.`,
+                  labels: ['demo-expiration', 'warning']
+                });
+                
+                console.log('✅ Expiration warning issue created');
+              }
+            }
+
