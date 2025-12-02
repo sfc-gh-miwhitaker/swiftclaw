@@ -80,30 +80,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   title: `⚠️ Demo Expires in ${daysLeft} Days`,
-                  body: `This demo repository will expire on **2025-12-24** (${daysLeft} days from now).
-                  
-**Actions Required:**
-- [ ] Extend expiration date if demo is still needed: Run \`extendexpiration 30\`
-- [ ] Archive manually if demo is no longer needed
-- [ ] Update dependencies and validate syntax before extending
-
-**What Happens After Expiration:**
-- Repository will be automatically archived
-- No further updates possible without unarchiving
-- Users searching GitHub will see it as archived/inactive
-
-**To Extend Expiration:**
-\`\`\`bash
-# Clone the repo
-git clone https://github.com/${context.repo.owner}/${context.repo.repo}
-cd ${context.repo.repo}
-
-# Run extendexpiration command (via Cursor)
-# This updates all files from .demo-config
-extendexpiration 30
-\`\`\`
-
-This issue was automatically created by the demo expiration workflow.`,
+                  body: `This demo repository will expire on **2025-12-24** (${daysLeft} days from now).\n\n**Actions Required:**\n- [ ] Extend expiration date if demo is still needed: Run \`extendexpiration 30\`\n- [ ] Archive manually if demo is no longer needed\n- [ ] Update dependencies and validate syntax before extending\n\n**What Happens After Expiration:**\n- Repository will be automatically archived\n- No further updates possible without unarchiving\n- Users searching GitHub will see it as archived/inactive\n\n**To Extend Expiration:**\n\`\`\`bash\n# Clone the repo\ngit clone https://github.com/${context.repo.owner}/${context.repo.repo}\ncd ${context.repo.repo}\n\n# Run extendexpiration command (via Cursor)\n# This updates all files from .demo-config\nextendexpiration 30\n\`\`\`\n\nThis issue was automatically created by the demo expiration workflow.`,
                   labels: ['demo-expiration', 'warning']
                 });
                 
