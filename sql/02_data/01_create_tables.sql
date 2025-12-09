@@ -43,8 +43,9 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG (
     document_id STRING PRIMARY KEY,
     document_type STRING NOT NULL,  -- 'INVOICE', 'ROYALTY_STATEMENT', 'CONTRACT'
-    stage_path STRING NOT NULL,     -- Path in @DOCUMENT_STAGE
-    file_name STRING NOT NULL,
+    stage_name STRING DEFAULT '@DOCUMENT_STAGE',  -- Stage name (e.g., '@DOCUMENT_STAGE')
+    file_path STRING NOT NULL,      -- Relative path within stage (e.g., 'invoices/invoice_001.pdf')
+    file_name STRING NOT NULL,      -- Just the filename (e.g., 'invoice_001.pdf')
     file_format STRING DEFAULT 'PDF',
     file_size_bytes NUMBER,
     original_language STRING DEFAULT 'en',

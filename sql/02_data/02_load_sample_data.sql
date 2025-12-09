@@ -42,7 +42,8 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 INSERT INTO DOCUMENT_CATALOG (
     document_id,
     document_type,
-    stage_path,
+    stage_name,
+    file_path,
     file_name,
     file_format,
     file_size_bytes,
@@ -53,7 +54,8 @@ INSERT INTO DOCUMENT_CATALOG (
 SELECT
     'INV_' || LPAD(SEQ4(), 6, '0') AS document_id,
     'INVOICE' AS document_type,
-    '@DOCUMENT_STAGE/invoices/' || 'invoice_' || LPAD(SEQ4(), 6, '0') || '.txt' AS stage_path,
+    '@DOCUMENT_STAGE' AS stage_name,
+    'invoices/invoice_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_path,
     'invoice_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
     'TXT' AS file_format,  -- Using TXT for demo; production would use PDF
     UNIFORM(2048, 8192, RANDOM()) AS file_size_bytes,
@@ -83,7 +85,8 @@ SELECT '10 invoice documents cataloged' AS status;
 INSERT INTO DOCUMENT_CATALOG (
     document_id,
     document_type,
-    stage_path,
+    stage_name,
+    file_path,
     file_name,
     file_format,
     file_size_bytes,
@@ -94,7 +97,8 @@ INSERT INTO DOCUMENT_CATALOG (
 SELECT
     'ROY_' || LPAD(SEQ4(), 6, '0') AS document_id,
     'ROYALTY_STATEMENT' AS document_type,
-    '@DOCUMENT_STAGE/royalty/' || 'royalty_' || LPAD(SEQ4(), 6, '0') || '.txt' AS stage_path,
+    '@DOCUMENT_STAGE' AS stage_name,
+    'royalty/royalty_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_path,
     'royalty_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
     'TXT' AS file_format,
     UNIFORM(4096, 16384, RANDOM()) AS file_size_bytes,
@@ -120,7 +124,8 @@ SELECT '5 royalty statement documents cataloged' AS status;
 INSERT INTO DOCUMENT_CATALOG (
     document_id,
     document_type,
-    stage_path,
+    stage_name,
+    file_path,
     file_name,
     file_format,
     file_size_bytes,
@@ -131,7 +136,8 @@ INSERT INTO DOCUMENT_CATALOG (
 SELECT
     'CON_' || LPAD(SEQ4(), 6, '0') AS document_id,
     'CONTRACT' AS document_type,
-    '@DOCUMENT_STAGE/contracts/' || 'contract_' || LPAD(SEQ4(), 6, '0') || '.txt' AS stage_path,
+    '@DOCUMENT_STAGE' AS stage_name,
+    'contracts/contract_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_path,
     'contract_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
     'TXT' AS file_format,
     UNIFORM(8192, 32768, RANDOM()) AS file_size_bytes,
@@ -247,7 +253,7 @@ TO USE WITH REAL PDF DOCUMENTS:
 4. Update catalog with real file paths:
    UPDATE DOCUMENT_CATALOG
    SET file_format = 'PDF',
-       stage_path = '@DOCUMENT_STAGE/invoices/' || file_name
+       file_path = 'invoices/' || file_name
    WHERE document_type = 'INVOICE';
 
 5. Proceed to AI processing scripts to parse documents

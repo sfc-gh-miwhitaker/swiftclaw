@@ -53,14 +53,12 @@ SELECT
     UUID_STRING() AS parsed_id,
     catalog.document_id,
     -- Call AI_PARSE_DOCUMENT with LAYOUT mode for best results
-    -- Note: AI_PARSE_DOCUMENT requires stage and path as separate arguments
-    -- Stage path format: '@DOCUMENT_STAGE/path/to/file.pdf'
-    -- Split into: '@DOCUMENT_STAGE' and 'path/to/file.pdf'
+    -- Note: This will fail if files don't actually exist on stage
+    -- AI_PARSE_DOCUMENT requires: (full_stage_path, options)
     TRY_CAST(
         AI_PARSE_DOCUMENT(
-            SPLIT_PART(catalog.stage_path, '/', 1),  -- '@DOCUMENT_STAGE'
-            SUBSTRING(catalog.stage_path, LENGTH(SPLIT_PART(catalog.stage_path, '/', 1)) + 2),  -- 'path/to/file.pdf'
-            {'mode': 'LAYOUT', 'page_split': FALSE}
+            catalog.stage_path,  -- Full path like '@DOCUMENT_STAGE/invoices/invoice_001.pdf'
+            OBJECT_CONSTRUCT('mode', 'LAYOUT', 'page_split', FALSE)
         ) AS VARIANT
     ) AS parsed_content,
     'LAYOUT' AS extraction_mode,
@@ -134,24 +132,22 @@ AND parsed.document_id IS NULL;
 
 -- For simple text extraction without layout, use OCR mode:
 /*
--- Example with direct stage reference (if you know the exact path):
+-- Example with TO_FILE:
 SELECT
     AI_PARSE_DOCUMENT(
-        '@DOCUMENT_STAGE',               -- Stage name
-        'invoices/invoice_001.pdf',      -- File path within stage
-        {'mode': 'OCR'}                  -- OCR mode (text only)
+        TO_FILE('@DOCUMENT_STAGE', 'invoices/invoice_001.pdf'),
+        OBJECT_CONSTRUCT('mode', 'OCR')
     ) AS parsed_content;
 
--- Or using catalog with path splitting:
+-- Or using catalog:
 INSERT INTO STG_PARSED_DOCUMENTS (...)
 SELECT
     UUID_STRING() AS parsed_id,
     catalog.document_id,
     TRY_CAST(
         AI_PARSE_DOCUMENT(
-            SPLIT_PART(catalog.stage_path, '/', 1),  -- Stage
-            SUBSTRING(catalog.stage_path, LENGTH(SPLIT_PART(catalog.stage_path, '/', 1)) + 2),  -- Path
-            {'mode': 'OCR'}  -- Faster, text-only extraction
+            TO_FILE(catalog.stage_name, catalog.file_path),
+            OBJECT_CONSTRUCT('mode', 'OCR')
         ) AS VARIANT
     ) AS parsed_content,
     'OCR' AS extraction_mode,
@@ -205,9 +201,8 @@ SELECT 'Document parsing complete - check STG_PARSED_DOCUMENTS for results' AS f
 SELECT
     document_id,
     AI_PARSE_DOCUMENT(
-        '@DOCUMENT_STAGE',              -- Stage name
-        'contracts/contract_001.pdf',   -- File path
-        {'mode': 'LAYOUT', 'page_split': TRUE}  -- Returns array of pages
+        TO_FILE('@DOCUMENT_STAGE', 'contracts/contract_001.pdf'),
+        OBJECT_CONSTRUCT('mode', 'LAYOUT', 'page_split', TRUE)
     ) AS parsed_pages
 FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG
 WHERE document_type = 'CONTRACT';
