@@ -1,52 +1,30 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
- * Script: Translate Content with AI
+ * Script: Translate Content with AI_TRANSLATE
  * 
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
- * ⚠️  IMPORTANT: AI Function syntax verified against Snowflake docs (2025-12-09)
- *     https://docs.snowflake.com/en/sql-reference/functions/ai_translate
- * 
  * PURPOSE:
- *   Demonstrates translation workflow while preserving entertainment industry
- *   context (names, terminology).
+ *   Use Snowflake Cortex AI_TRANSLATE to convert non-English content to English
+ *   while preserving entertainment industry context (names, terminology).
  * 
- * PRODUCTION APPROACH:
- *   For real multilingual content, use:
- *   
- *   SELECT AI_TRANSLATE(
- *       text_column,
- *       'es',  -- Source language code (or '' for auto-detect)
- *       'en'   -- Target language code
- *   ) AS translated_text
- *   FROM multilingual_table;
+ * REQUIREMENTS:
+ *   - Parsed documents in STG_PARSED_DOCUMENTS
+ *   - SNOWFLAKE.CORTEX_USER database role granted
  * 
- *   Note: AI_TRANSLATE is the modern name (GA)
- *         SNOWFLAKE.CORTEX.TRANSLATE is legacy but still supported
- * 
- * DEMO APPROACH:
- *   Since we have synthetic data, we simulate translation with SQL logic.
- * 
- * QUALITY TEST INCLUDED:
- *   🔬 Russian Names Test - Validates handling of surnames that are also
- *      occupation words (Пекарь=Baker, Мясник=Butcher, etc.)
- *   
- *   This addresses a real-world issue reported by native Russian speakers
- *   where AI translation sometimes incorrectly translates surnames into
- *   their occupation meanings. The test verifies proper noun preservation.
- *   
- *   Test Cases: 6 Russian entertainment industry names
- *   Expected: Names preserved as transliterated proper nouns
- *   Result: Pass/Fail report with detailed analysis
+ * AI FUNCTION: AI_TRANSLATE
+ *   Syntax: AI_TRANSLATE(text, source_language, target_language)
+ *   Supports: 20+ languages including auto-detection ('')
+ *   Quality: Best results when English is source or target
  * 
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
  * 
  * Author: SE Community
- * Created: 2025-11-24 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
  ******************************************************************************/
 
--- Set context (ensure ACCOUNTADMIN role for schema object creation)
+-- Set context
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
 USE SCHEMA SFE_STG_ENTERTAINMENT;
@@ -56,197 +34,246 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- TRANSLATE NON-ENGLISH DOCUMENTS
 -- ============================================================================
 
+-- Translate parsed documents where source language is not English
 INSERT INTO STG_TRANSLATED_CONTENT (
     translation_id,
     parsed_id,
     source_language,
     target_language,
-    translated_content,
+    source_text,
+    translated_text,
     translation_confidence,
     translated_at
 )
 SELECT
-    'TRANS_' || UUID_STRING() AS translation_id,
-    parsed_id,
-    parsed_content:detected_language::STRING AS source_language,
+    UUID_STRING() AS translation_id,
+    parsed.parsed_id,
+    catalog.original_language AS source_language,
     'en' AS target_language,
-    -- Simulated translation: In production, use AI_TRANSLATE(text, source_lang, target_lang)
-    -- This demo simulates translation by keeping English text as-is
-    -- and providing placeholder translations for Spanish content
-    OBJECT_CONSTRUCT(
-        'original_text', parsed_content:extracted_text::STRING,
-        'translated_text', 
-            CASE 
-                WHEN parsed_content:detected_language::STRING = 'en' 
-                THEN parsed_content:extracted_text::STRING
-                ELSE 
-                    -- Simulated Spanish-to-English translation
-                    REPLACE(REPLACE(REPLACE(REPLACE(
-                        parsed_content:extracted_text::STRING,
-                        'Servicios de Producción SA', 'Production Services Inc'),
-                        'Estudios Globales', 'Global Studios'),
-                        'Soluciones MediaTech', 'MediaTech Solutions'),
-                        'Finanzas Cinematográficas', 'Film Finance Co'
-                    )
-            END,
-        'translation_method', 'SIMULATED_AI_TRANSLATE',
-        'context_preserved', TRUE,
-        'proper_nouns_protected', ARRAY_CONSTRUCT('Global Media Corp', 'Carpenter', 'Johnson'),
-        'confidence_score', UNIFORM(0.88, 0.99, RANDOM())
-    ) AS translated_content,
-    UNIFORM(0.88, 0.99, RANDOM()) AS translation_confidence,
+    -- Extract text from parsed content
+    parsed.parsed_content:text::STRING AS source_text,
+    -- Call AI_TRANSLATE with source and target languages
+    AI_TRANSLATE(
+        parsed.parsed_content:text::STRING,
+        catalog.original_language,  -- Source language (e.g., 'es', 'fr')
+        'en'  -- Target language (English)
+    ) AS translated_text,
+    UNIFORM(0.88, 0.99, RANDOM()) AS translation_confidence,  -- Simulated for demo
     CURRENT_TIMESTAMP() AS translated_at
+FROM STG_PARSED_DOCUMENTS parsed
+JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog 
+    ON parsed.document_id = catalog.document_id
+WHERE catalog.original_language <> 'en'  -- Only translate non-English
+AND parsed.parsed_content:text::STRING IS NOT NULL  -- Has extractable text
+-- Limit to prevent timeout
+LIMIT 100;
+
+-- Log translation attempts
+INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
+    log_id,
+    document_id,
+    processing_step,
+    started_at,
+    completed_at,
+    duration_seconds,
+    status
+)
+SELECT
+    UUID_STRING() AS log_id,
+    parsed.document_id,
+    'TRANSLATE' AS processing_step,
+    trans.translated_at AS started_at,
+    trans.translated_at AS completed_at,
+    UNIFORM(2, 10, RANDOM()) AS duration_seconds,  -- Simulated
+    CASE 
+        WHEN trans.translated_text IS NOT NULL THEN 'SUCCESS'
+        ELSE 'FAILED'
+    END AS status
+FROM STG_TRANSLATED_CONTENT trans
+JOIN STG_PARSED_DOCUMENTS parsed ON trans.parsed_id = parsed.parsed_id;
+
+-- ============================================================================
+-- AUTO-DETECT LANGUAGE MODE
+-- ============================================================================
+
+-- For documents where source language is unknown, use auto-detection
+-- AI_TRANSLATE accepts empty string '' for source language to auto-detect
+
+/*
+INSERT INTO STG_TRANSLATED_CONTENT (...)
+SELECT
+    UUID_STRING() AS translation_id,
+    parsed_id,
+    '' AS source_language,  -- Auto-detect
+    'en' AS target_language,
+    source_text,
+    AI_TRANSLATE(
+        source_text,
+        '',  -- Empty string triggers auto-detection
+        'en'
+    ) AS translated_text,
+    ...
 FROM STG_PARSED_DOCUMENTS
-WHERE parsed_content:detected_language::STRING <> 'en';
-
-SELECT COUNT(*) || ' non-English documents translated' AS status
-FROM STG_TRANSLATED_CONTENT;
+WHERE ... ;
+*/
 
 -- ============================================================================
--- RUSSIAN NAMES TEST: Known Translation Edge Case
--- ============================================================================
--- CONTEXT: Russian names that are also occupations (e.g., Пекарь = Baker, 
--- Мясник = Butcher) should be preserved as proper nouns, not translated.
--- This test validates Cortex's ability to distinguish context.
---
--- REPORTED BY: Vlad (native Russian speaker)
--- ISSUE: AI translation sometimes incorrectly translates surnames when they
---        match occupation words in Russian.
---
--- EXPECTED BEHAVIOR: Names should remain as transliterated proper nouns
+-- QUALITY TEST: Russian Names Preservation
 -- ============================================================================
 
--- Create test table with Russian names that are also occupations
+-- Test case: Ensure proper nouns (Russian names that are also occupations)
+-- are preserved correctly and not mistranslated
+
 CREATE OR REPLACE TEMPORARY TABLE russian_name_test AS
 SELECT * FROM (VALUES
-    ('Иван Пекарь работает режиссером в Москве', 'Ivan Pekar', 'director', 'Пекарь means Baker but is a surname here'),
-    ('Режиссер Петр Мясник подписал контракт', 'Petr Myasnik', 'director', 'Мясник means Butcher but is a surname'),
-    ('Актриса Анна Кузнец получила главную роль', 'Anna Kuznets', 'actress', 'Кузнец means Smith but is a surname'),
-    ('Продюсер Сергей Плотник снимает фильм', 'Sergey Plotnik', 'producer', 'Плотник means Carpenter but is a surname'),
-    ('Композитор Мария Швец написала саундтрек', 'Maria Shvets', 'composer', 'Швец means Tailor but is a surname'),
-    ('Оператор Дмитрий Гончар работает на площадке', 'Dmitry Gonchar', 'cinematographer', 'Гончар means Potter but is a surname')
-) AS t(russian_text, expected_name_preserved, occupation, explanation);
+    ('Режиссер Иван Пекарь работает в Москве', 'Ivan Pekar', 'director', 'Пекарь means Baker'),
+    ('Актриса Анна Кузнец получила главную роль', 'Anna Kuznets', 'actress', 'Кузнец means Smith'),
+    ('Продюсер Сергей Плотник снимает фильм', 'Sergey Plotnik', 'producer', 'Плотник means Carpenter')
+) AS t(russian_text, expected_name, occupation, note);
 
--- Run translation test using actual AI_TRANSLATE function
--- NOTE: In a real demo, you would call the actual Cortex function here
+-- Run translation quality test
 CREATE OR REPLACE TEMPORARY TABLE russian_translation_results AS
 SELECT
     russian_text,
-    expected_name_preserved,
+    expected_name,
     occupation,
-    explanation,
-    -- For demo: Simulated translation
-    -- In production: AI_TRANSLATE(russian_text, 'ru', 'en')
-    CASE 
-        -- Simulate CORRECT behavior (name preserved)
-        WHEN CONTAINS(russian_text, 'Пекарь') THEN 'Ivan Pekar works as a director in Moscow'
-        WHEN CONTAINS(russian_text, 'Мясник') THEN 'Director Petr Myasnik signed a contract'
-        WHEN CONTAINS(russian_text, 'Кузнец') THEN 'Actress Anna Kuznets received the lead role'
-        WHEN CONTAINS(russian_text, 'Плотник') THEN 'Producer Sergey Plotnik is filming a movie'
-        WHEN CONTAINS(russian_text, 'Швец') THEN 'Composer Maria Shvets wrote the soundtrack'
-        WHEN CONTAINS(russian_text, 'Гончар') THEN 'Cinematographer Dmitry Gonchar works on set'
-    END AS translated_text_simulated,
-    -- Flag if name appears to be incorrectly translated to occupation
+    note,
+    AI_TRANSLATE(russian_text, 'ru', 'en') AS translated_text,
+    -- Check if name is preserved (not translated to occupation)
     CASE
-        WHEN CONTAINS(russian_text, 'Пекарь') AND NOT CONTAINS(translated_text_simulated, 'Pekar') THEN TRUE
-        WHEN CONTAINS(russian_text, 'Мясник') AND NOT CONTAINS(translated_text_simulated, 'Myasnik') THEN TRUE
-        WHEN CONTAINS(russian_text, 'Кузнец') AND NOT CONTAINS(translated_text_simulated, 'Kuznets') THEN TRUE
-        WHEN CONTAINS(russian_text, 'Плотник') AND NOT CONTAINS(translated_text_simulated, 'Plotnik') THEN TRUE
-        WHEN CONTAINS(russian_text, 'Швец') AND NOT CONTAINS(translated_text_simulated, 'Shvets') THEN TRUE
-        WHEN CONTAINS(russian_text, 'Гончар') AND NOT CONTAINS(translated_text_simulated, 'Gonchar') THEN TRUE
+        WHEN CONTAINS(AI_TRANSLATE(russian_text, 'ru', 'en'), expected_name) 
+        THEN TRUE
         ELSE FALSE
-    END AS name_mistranslated_flag,
-    CURRENT_TIMESTAMP() AS tested_at
+    END AS name_preserved_correctly
 FROM russian_name_test;
 
--- ============================================================================
--- RUSSIAN NAME TRANSLATION: TEST RESULTS
--- ============================================================================
-
--- Summary: Pass/Fail Report
-SELECT 
-    '🔬 Russian Name Translation Test' AS test_category,
+-- Display test results
+SELECT
+    '🔬 Russian Name Translation Quality Test' AS test_category,
     COUNT(*) AS total_test_cases,
-    SUM(CASE WHEN name_mistranslated_flag = FALSE THEN 1 ELSE 0 END) AS passed,
-    SUM(CASE WHEN name_mistranslated_flag = TRUE THEN 1 ELSE 0 END) AS failed,
+    SUM(CASE WHEN name_preserved_correctly THEN 1 ELSE 0 END) AS passed,
+    SUM(CASE WHEN NOT name_preserved_correctly THEN 1 ELSE 0 END) AS failed,
     CASE 
-        WHEN SUM(CASE WHEN name_mistranslated_flag = TRUE THEN 1 ELSE 0 END) = 0 
+        WHEN SUM(CASE WHEN NOT name_preserved_correctly THEN 1 ELSE 0 END) = 0 
         THEN '✅ PASS - All names correctly preserved'
-        ELSE '⚠️  FAIL - Some names incorrectly translated to occupations'
+        ELSE '⚠️  FAIL - Some names mistranslated'
     END AS test_result
 FROM russian_translation_results;
 
--- Detailed Results: Show each test case
+-- Show detailed results
 SELECT
-    '📋 Test Case: ' || expected_name_preserved AS test_name,
-    russian_text AS original_russian,
-    translated_text_simulated AS translated_english,
+    russian_text AS original,
+    translated_text AS translation,
+    expected_name AS expected_name_preservation,
     CASE 
-        WHEN name_mistranslated_flag = FALSE 
-        THEN '✅ Name preserved correctly'
-        ELSE '❌ Name mistranslated as occupation'
+        WHEN name_preserved_correctly 
+        THEN '✅ Correct' 
+        ELSE '❌ Failed'
     END AS result,
-    explanation AS context
+    note
 FROM russian_translation_results
-ORDER BY name_mistranslated_flag DESC, expected_name_preserved;
-
--- Failure Analysis (if any failures)
-SELECT
-    'Failed Test Cases' AS category,
-    expected_name_preserved AS name_that_should_be_preserved,
-    occupation AS could_be_mistranslated_as,
-    translated_text_simulated AS actual_translation,
-    'Expected name "' || expected_name_preserved || '" in output but ' ||
-    CASE 
-        WHEN CONTAINS(translated_text_simulated, occupation) 
-        THEN 'found occupation "' || occupation || '" instead'
-        ELSE 'name appears to be missing or altered'
-    END AS issue_description
-FROM russian_translation_results
-WHERE name_mistranslated_flag = TRUE;
+ORDER BY name_preserved_correctly ASC, russian_text;
 
 -- ============================================================================
--- VERIFICATION & QUALITY CHECKS
+-- VERIFICATION & ANALYTICS
 -- ============================================================================
 
--- Check translation coverage
+-- Translation coverage summary
 SELECT 
     source_language,
     target_language,
     COUNT(*) AS translations_performed,
     AVG(translation_confidence) AS avg_confidence,
-    MIN(translation_confidence) AS min_confidence
+    MIN(translation_confidence) AS min_confidence,
+    AVG(LENGTH(translated_text)) AS avg_translated_length
 FROM STG_TRANSLATED_CONTENT
 GROUP BY source_language, target_language;
 
 -- Sample translated content
 SELECT 
-    t.translation_id,
-    p.document_source_table,
-    t.source_language,
-    t.translated_content:translation_method::STRING AS method,
-    t.translation_confidence,
-    t.translated_at
-FROM STG_TRANSLATED_CONTENT t
-JOIN STG_PARSED_DOCUMENTS p ON t.parsed_id = p.parsed_id
+    trans.source_language,
+    trans.target_language,
+    -- Show first 100 characters of source and translated text
+    SUBSTR(trans.source_text, 1, 100) AS source_preview,
+    SUBSTR(trans.translated_text, 1, 100) AS translated_preview,
+    trans.translation_confidence,
+    trans.translated_at
+FROM STG_TRANSLATED_CONTENT trans
 LIMIT 10;
 
--- Verify context preservation (proper nouns)
+-- Check for translation failures
 SELECT 
-    translation_id,
-    translated_content:proper_nouns_protected AS protected_terms,
-    translation_confidence
+    COUNT(*) AS failed_translations
 FROM STG_TRANSLATED_CONTENT
-WHERE ARRAY_SIZE(translated_content:proper_nouns_protected) > 0
-LIMIT 5;
+WHERE translated_text IS NULL 
+OR LENGTH(translated_text) = 0;
+
+SELECT 'Translation processing complete - check STG_TRANSLATED_CONTENT for results' AS final_status;
 
 -- ============================================================================
--- FINAL STATUS & RECOMMENDATIONS
+-- ADVANCED: Multi-language Translation Chain
 -- ============================================================================
 
-SELECT 
-    '✅ Translation Processing Complete' AS status,
-    'Scroll up to review Russian Names Test results (🔬)' AS action_required,
-    'This test validates proper noun preservation for names that are also occupations' AS test_purpose,
-    'Reported by native Russian speaker - real-world quality check' AS context;
+-- For multilingual content requiring multiple translations:
+/*
+-- Example: Spanish → English → French
+WITH spanish_to_english AS (
+    SELECT
+        document_id,
+        AI_TRANSLATE(source_text, 'es', 'en') AS english_text
+    FROM source_documents
+    WHERE source_language = 'es'
+),
+english_to_french AS (
+    SELECT
+        document_id,
+        AI_TRANSLATE(english_text, 'en', 'fr') AS french_text
+    FROM spanish_to_english
+)
+SELECT * FROM english_to_french;
+*/
 
+-- ============================================================================
+-- PRODUCTION NOTES
+-- ============================================================================
+
+/*
+FOR PRODUCTION DEPLOYMENT:
+
+1. **Language Support:**
+   - AI_TRANSLATE supports 20+ languages
+   - Best results when English is source or target language
+   - Use auto-detect ('') for unknown source languages
+   - Supported languages: ar, zh, hr, cs, nl, en, fi, fr, de, el, hi, id, 
+                          it, ja, ko, pl, pt, ru, es, sv, tr, uk, vi
+
+2. **Context Preservation:**
+   - Proper nouns (names, places) are generally preserved
+   - Industry-specific terminology may need validation
+   - For critical translations, implement quality checks
+   - Consider manual review for legal/contractual documents
+
+3. **Performance Optimization:**
+   - Batch translations in groups of 100-1000 records
+   - Parallel processing with multiple warehouses
+   - Cache frequently translated phrases
+   - Skip translation if source and target languages match
+
+4. **Error Handling:**
+   - Wrap AI_TRANSLATE in TRY_CAST for graceful failures
+   - Log translation failures
+   - Retry with auto-detect if specific language fails
+   - Set timeout limits for very long documents
+
+5. **Cost Management:**
+   - AI_TRANSLATE costs per character processed
+   - Translate only necessary fields (not entire documents if not needed)
+   - Skip translation for English documents
+   - Consider pre-filtering by language detection
+
+6. **Quality Assurance:**
+   - Implement test suites for critical translations
+   - Track confidence scores (if available from future API updates)
+   - Flag low-quality translations for manual review
+   - Test with representative samples from each language
+*/

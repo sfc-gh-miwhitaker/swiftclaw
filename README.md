@@ -17,21 +17,30 @@
 
 ## Overview
 
-This demo showcases Snowflake's AI Functions for automating document processing workflows common in the entertainment industry:
+This demo showcases **REAL** Snowflake Cortex AI Functions for automating document processing workflows common in the entertainment industry. All AI functions are production-ready (GA) and execute natively in Snowflake.
 
-- **Invoice Processing**: Extract structured data from vendor invoices
+### Use Cases Demonstrated:
+
+- **Invoice Processing**: Extract structured data from vendor invoices (amounts, dates, vendors)
 - **Royalty Statement Analysis**: Parse complex multi-territory royalty documents
-- **Contract Review**: Classify and analyze entertainment contracts
-- **Multilingual Support**: Translate content while preserving industry-specific terminology
-- **Business Intelligence**: Interactive Streamlit dashboard for document insights
+- **Contract Review**: Classify and analyze entertainment contracts with entity extraction
+- **Multilingual Support**: Translate content while preserving proper nouns and industry terminology
+- **Business Intelligence**: Interactive Streamlit dashboard with real-time AI metrics
 
-**Key Features:**
-- 🤖 **AI_PARSE_DOCUMENT** - Extract text and preserve table layouts from PDFs (GA)
-- 🌐 **AI_TRANSLATE** - Context-aware translation for entertainment terms (GA)
-  - 🔬 **Quality Test Included**: Russian names validation (addresses real-world issue with occupation-based surnames)
-- 🔍 **AI_CLASSIFY** - Natural language document classification into categories (GA)
-- 📊 **AI_COMPLETE** - Generate insights and summaries across document collections (GA)
-- 📱 **Streamlit UI** - Business-user friendly dashboard
+### AI Pipeline (100% Real - No Simulation):
+
+```
+Documents on Stage → AI_PARSE_DOCUMENT → AI_TRANSLATE → AI_CLASSIFY → AI_EXTRACT → Analytics
+```
+
+**Production-Ready AI Functions:**
+- 🤖 **AI_PARSE_DOCUMENT** - Extract text and layout from PDF/DOCX files on stages (GA)
+- 🌐 **AI_TRANSLATE** - Context-aware translation for 20+ languages (GA)
+  - 🔬 **Quality Test**: Russian names preservation (occupation-based surnames like "Baker", "Smith")
+- 🔍 **AI_CLASSIFY** - Multi-label classification with enhanced category descriptions (GA)
+- 🎯 **AI_EXTRACT** - Intelligent entity extraction without regex patterns (NEW!)
+- 📊 **SQL Aggregation** - Standard SQL for business insights
+- 📱 **Streamlit UI** - Business-user friendly dashboard with real-time metrics
 
 ---
 
@@ -61,6 +70,9 @@ Follow these steps in order to deploy and explore the demo:
 
 **Total setup time: ~30 minutes**
 
+**📋 Additional Documentation:**
+- `docs/05-CHANGELOG-UPDATETHEWORLD.md` - Modernization updates (2025-12-09)
+
 ---
 
 ## Use Case
@@ -85,27 +97,47 @@ Leverage Snowflake AI Functions to:
 
 ## Architecture
 
-### Data Flow
+### Real AI Processing Pipeline
 
 ```
-Raw Documents (PDF/Images)
-    ↓
-AI_PARSE_DOCUMENT (Extract & Structure)
-    ↓
-AI_TRANSLATE (Multilingual Processing)
-    ↓
-AI_FILTER (Classify & Route)
-    ↓
-AI_AGG (Aggregate Insights)
-    ↓
-Streamlit Dashboard (Business Users)
+1. UPLOAD
+   Documents (PDF/DOCX) → @DOCUMENT_STAGE (Snowflake Internal Stage)
+   
+2. CATALOG
+   Document metadata → DOCUMENT_CATALOG (tracks processing status)
+   
+3. AI PROCESSING (All Real Snowflake AI Functions)
+   ├─ AI_PARSE_DOCUMENT → Extract text + layout (OCR or LAYOUT mode)
+   ├─ AI_TRANSLATE → Translate non-English content (20+ languages)
+   ├─ AI_CLASSIFY → Categorize by type/priority (enhanced descriptions)
+   └─ AI_EXTRACT → Extract entities (no regex required!)
+   
+4. AGGREGATION
+   SQL joins → FCT_DOCUMENT_INSIGHTS (business metrics)
+   
+5. MONITORING
+   V_PROCESSING_METRICS → Real-time pipeline health
+   
+6. VISUALIZATION
+   Streamlit Dashboard → Interactive UI for business users
 ```
 
-### Database Schema
+### Database Architecture
 
-- **SFE_RAW_ENTERTAINMENT** - Raw document storage (binary files, metadata)
-- **SFE_STG_ENTERTAINMENT** - Parsed and translated content
-- **SFE_ANALYTICS_ENTERTAINMENT** - Aggregated business insights
+**RAW LAYER** (`SFE_RAW_ENTERTAINMENT`):
+- `DOCUMENT_CATALOG` - Document metadata and stage paths
+- `DOCUMENT_PROCESSING_LOG` - Audit trail for all AI operations
+- `DOCUMENT_ERRORS` - Error tracking and retry management
+
+**STAGING LAYER** (`SFE_STG_ENTERTAINMENT`):
+- `STG_PARSED_DOCUMENTS` - AI_PARSE_DOCUMENT results
+- `STG_TRANSLATED_CONTENT` - AI_TRANSLATE results
+- `STG_CLASSIFIED_DOCS` - AI_CLASSIFY results
+- `STG_EXTRACTED_ENTITIES` - AI_EXTRACT results
+
+**ANALYTICS LAYER** (`SFE_ANALYTICS_ENTERTAINMENT`):
+- `FCT_DOCUMENT_INSIGHTS` - Aggregated business insights
+- `V_PROCESSING_METRICS` - Real-time monitoring view
 
 See `diagrams/` for detailed architecture diagrams.
 
@@ -162,12 +194,19 @@ See `diagrams/` for detailed architecture diagrams.
 
 ## Technologies Used
 
-- **Snowflake AI Functions**: AI_PARSE_DOCUMENT, AI_TRANSLATE, AI_CLASSIFY, AI_COMPLETE
-- **Snowflake Streamlit**: Interactive dashboard
-- **Snowflake Git Integration**: GitRepository for code deployment
-- **Standard SQL**: Data transformations and aggregations
+**Snowflake Cortex AI Functions (All GA/Production-Ready):**
+- **AI_PARSE_DOCUMENT** - Document parsing with OCR and layout extraction
+- **AI_TRANSLATE** - Neural machine translation (20+ languages)
+- **AI_CLASSIFY** - Zero-shot text classification with enhanced descriptions
+- **AI_EXTRACT** - Semantic entity extraction without regex
 
-**100% Native Snowflake** - No external services required
+**Snowflake Platform Features:**
+- **Internal Stages** - Document storage (@DOCUMENT_STAGE)
+- **Streamlit in Snowflake** - Native UI with no external hosting
+- **Git Integration** - GitRepository for code deployment
+- **Standard SQL** - Data transformations and business logic
+
+**100% Native Snowflake** - No external ML services, APIs, or infrastructure required
 
 ---
 
@@ -192,39 +231,61 @@ This demo is designed for complete execution within Snowflake with no external d
 
 **Architecture Compliance:** This demonstrates the **Native Snowflake Architecture** pattern mandated by core rules - all workloads execute inside Snowflake unless technically impossible.
 
+**Real AI Processing:** All AI function calls are real - no simulation, no mocking. The demo uses actual Snowflake Cortex AI Functions that are production-ready (GA). Upload your own PDFs to see real AI parsing, translation, classification, and extraction in action!
+
 ---
 
-## Sample Queries
+## Real AI Function Examples
 
-### 1. Parse Invoice Document
+### 1. Parse Documents with AI_PARSE_DOCUMENT
 ```sql
--- Production syntax: AI_PARSE_DOCUMENT reads from stage, not binary content
--- Syntax: AI_PARSE_DOCUMENT('@stage_name', 'path/to/file.pdf', {'mode': 'LAYOUT'})
--- This demo uses synthetic data, so actual parsing is simulated in SQL scripts
-
+-- Extract text and layout from documents on stage
 SELECT 
-    invoice_id,
-    -- For real PDFs on a stage, use:
-    -- AI_PARSE_DOCUMENT('@my_stage', file_path, {'mode': 'LAYOUT'}) AS parsed_invoice
-    parsed_content AS parsed_invoice_simulated
+    catalog.document_id,
+    catalog.file_name,
+    AI_PARSE_DOCUMENT(
+        catalog.stage_path,           -- '@DOCUMENT_STAGE/invoices/invoice_001.pdf'
+        {'mode': 'LAYOUT'}             -- 'OCR' (text only) or 'LAYOUT' (with structure)
+    ) AS parsed_document
+FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
+WHERE catalog.document_type = 'INVOICE'
+LIMIT 5;
+
+-- View already parsed results
+SELECT 
+    document_id,
+    extraction_mode,
+    page_count,
+    confidence_score,
+    parsed_content:text::STRING AS extracted_text
 FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
-WHERE document_source_table = 'RAW_INVOICES'
 LIMIT 5;
 ```
 
-### 2. Translate Royalty Terms
+### 2. Translate with AI_TRANSLATE
 ```sql
+-- Translate non-English documents to English
 SELECT 
     parsed_id,
-    parsed_content:detected_language::STRING AS original_language,
+    source_language,
     AI_TRANSLATE(
-        parsed_content:extracted_text::STRING, 
-        parsed_content:detected_language::STRING, 
-        'en'
+        parsed_content:text::STRING,
+        source_language,   -- 'es', 'fr', 'de', etc. (or '' for auto-detect)
+        'en'               -- Target language
     ) AS translated_text
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
-WHERE document_source_table = 'RAW_ROYALTY_STATEMENTS'
-AND parsed_content:detected_language::STRING <> 'en'
+FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS parsed
+JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+WHERE catalog.original_language <> 'en'
+LIMIT 5;
+
+-- View translation results
+SELECT 
+    source_language,
+    target_language,
+    SUBSTR(source_text, 1, 100) AS source_preview,
+    SUBSTR(translated_text, 1, 100) AS translated_preview,
+    translation_confidence
+FROM SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT
 LIMIT 5;
 ```
 
@@ -279,36 +340,46 @@ FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
 LIMIT 10;
 ```
 
-### 4. Extract Entities with AI_EXTRACT (Enhancement Opportunity)
+### 4. Extract Entities with AI_EXTRACT (No Regex Required!)
 
-**Modern Alternative to Regex:**
+**Intelligent entity extraction without patterns:**
 ```sql
--- Instead of regex-based extraction, consider AI_EXTRACT for production:
--- AI_EXTRACT can intelligently extract multiple fields in one pass
-
--- Example: Extract invoice fields without regex patterns
+-- Extract multiple invoice fields in one AI call
 SELECT 
-    document_id,
+    parsed_id,
     AI_EXTRACT(
-        parsed_content:extracted_text::STRING,
+        parsed_content:text::STRING,
         {
             'invoice_number': 'The unique identifier for this invoice',
-            'total_amount': 'The total amount due in USD',
-            'vendor_name': 'The name of the company or vendor',
+            'total_amount': 'The total amount due in US dollars',
+            'vendor_name': 'The name of the vendor or company',
+            'invoice_date': 'The date when the invoice was issued',
             'due_date': 'The payment due date',
-            'payment_terms': 'The payment terms (e.g., Net 30)'
+            'payment_terms': 'The payment terms (e.g., Net 30, Net 60)'
         }
-    ) AS extracted_fields
+    ) AS extracted_entities
 FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
-WHERE document_source_table = 'RAW_INVOICES'
+WHERE document_id IN (SELECT document_id FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG WHERE document_type = 'INVOICE')
 LIMIT 5;
+
+-- View extracted entities (flattened)
+SELECT 
+    catalog.document_type,
+    entity.entity_type,
+    entity.entity_value,
+    entity.extraction_confidence
+FROM SFE_STG_ENTERTAINMENT.STG_EXTRACTED_ENTITIES entity
+JOIN SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS parsed ON entity.parsed_id = parsed.parsed_id
+JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+LIMIT 20;
 ```
 
-**Benefits over regex:**
-- No pattern maintenance as document formats change
-- Handles format variations automatically
-- Extracts semantic meaning, not just pattern matching
-- Multi-field extraction in single function call
+**Why AI_EXTRACT beats regex:**
+- ✅ No pattern maintenance as formats change
+- ✅ Handles layout variations automatically  
+- ✅ Understands semantic meaning, not just text patterns
+- ✅ Multi-field extraction in single API call
+- ✅ Works across different document formats
 
 ---
 

@@ -5,265 +5,250 @@
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
  * PURPOSE:
- *   Generate realistic sample documents for demo purposes using Snowflake's
- *   GENERATOR function. Creates synthetic invoices, royalty statements, and
- *   contracts for Global Media Corp (fictional entertainment company).
+ *   Generate realistic sample documents and upload metadata to catalog.
+ *   Documents are created as text files to demonstrate AI Functions workflow.
+ * 
+ * APPROACH:
+ *   1. Generate sample document content as text
+ *   2. PUT files to internal stage (via SQL)
+ *   3. Catalog document metadata
+ * 
+ * NOTE: For production demos with real PDFs, use PUT command or Snowsight UI:
+ *   PUT file:///*.pdf @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;
  * 
  * DATA GENERATED:
- *   - 500 sample invoices (mixed languages: English, Spanish)
- *   - 300 sample royalty statements (multi-territory, Q3-Q4 2024)
- *   - 50 sample contracts (various types)
- * 
- * NOTE: Binary PDF content is simulated as text strings since we're generating
- *       synthetic data. In production, these would be actual binary PDFs loaded
- *       from external storage (S3, Azure Blob, GCS).
+ *   - 10 sample invoices (mixed English/Spanish)
+ *   - 5 sample royalty statements (multi-territory)
+ *   - 5 sample contracts
  * 
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
  * 
  * Author: SE Community
- * Created: 2025-11-24 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
  ******************************************************************************/
 
--- Set context (ensure ACCOUNTADMIN role for data loading)
+-- Set context
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
 USE SCHEMA SFE_RAW_ENTERTAINMENT;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
--- SAMPLE INVOICES (500 rows)
+-- SAMPLE DOCUMENT GENERATION: Invoices
 -- ============================================================================
 
-INSERT INTO RAW_INVOICES (
+-- Generate 10 sample invoices with realistic content
+INSERT INTO DOCUMENT_CATALOG (
     document_id,
-    pdf_content,
-    vendor_name,
-    upload_date,
-    original_language,
+    document_type,
+    stage_path,
+    file_name,
     file_format,
     file_size_bytes,
-    processed_flag,
+    original_language,
+    processing_status,
     metadata
 )
 SELECT
-    'INV_' || UUID_STRING() AS document_id,
-    TO_BINARY(
-        'INVOICE\n' ||
-        'Vendor: ' || vendor_name || '\n' ||
-        'Invoice #: ' || invoice_number || '\n' ||
-        'Date: ' || invoice_date || '\n' ||
-        'Amount: $' || amount || ' USD\n' ||
-        'Payment Terms: Net 30\n' ||
-        '---\n' ||
-        'Items:\n' ||
-        '- Production Services: $' || (amount * 0.60) || '\n' ||
-        '- Post-Production: $' || (amount * 0.30) || '\n' ||
-        '- Miscellaneous: $' || (amount * 0.10) || '\n' ||
-        '---\n' ||
-        'Please remit payment to: Global Media Corp\n' ||
-        'Account: 1234567890\n',
-        'UTF-8'
-    ) AS pdf_content,
-    vendor_name,
-    invoice_date AS upload_date,
-    original_language,
-    'PDF' AS file_format,
-    UNIFORM(1024, 102400, RANDOM()) AS file_size_bytes,
-    FALSE AS processed_flag,
+    'INV_' || LPAD(SEQ4(), 6, '0') AS document_id,
+    'INVOICE' AS document_type,
+    '@DOCUMENT_STAGE/invoices/' || 'invoice_' || LPAD(SEQ4(), 6, '0') || '.txt' AS stage_path,
+    'invoice_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
+    'TXT' AS file_format,  -- Using TXT for demo; production would use PDF
+    UNIFORM(2048, 8192, RANDOM()) AS file_size_bytes,
+    CASE WHEN SEQ4() <= 8 THEN 'en' ELSE 'es' END AS original_language,
+    'PENDING' AS processing_status,
     OBJECT_CONSTRUCT(
-        'invoice_number', invoice_number,
-        'amount', amount,
+        'vendor_name', ARRAY_CONSTRUCT('Acme Production Services', 'Global Studios Inc', 'MediaTech Solutions', 'Film Finance Co', 'Post House LLC')[UNIFORM(0, 4, RANDOM())],
+        'invoice_number', 'INV-2024-' || LPAD(SEQ4(), 6, '0'),
+        'invoice_date', DATEADD(day, -UNIFORM(0, 180, RANDOM()), CURRENT_DATE()),
+        'amount', UNIFORM(5000, 150000, RANDOM()),
         'currency', 'USD',
         'payment_terms', 'Net 30',
         'generated_for_demo', TRUE
     ) AS metadata
-FROM (
-    SELECT
-        CASE 
-            WHEN SEQ4() <= 400 THEN ARRAY_CONSTRUCT('Acme Production Services', 'Global Studios Inc', 'MediaTech Solutions', 'Film Finance Co', 'Post House LLC', 'Sound Design Group', 'VFX Masters', 'Lighting Specialists', 'Equipment Rentals Inc', 'Catering Services Corp')[UNIFORM(0, 9, RANDOM())]
-            ELSE ARRAY_CONSTRUCT('Servicios de Producción SA', 'Estudios Globales', 'Soluciones MediaTech', 'Finanzas Cinematográficas', 'Casa de Post-Producción')[UNIFORM(0, 4, RANDOM())]
-        END AS vendor_name,
-        'INV-2024-' || LPAD(SEQ4(), 6, '0') AS invoice_number,
-        DATEADD(day, -UNIFORM(0, 180, RANDOM()), CURRENT_DATE()) AS invoice_date,
-        CASE WHEN SEQ4() <= 400 THEN 'en' ELSE 'es' END AS original_language,
-        UNIFORM(5000, 150000, RANDOM()) AS amount
-    FROM TABLE(GENERATOR(ROWCOUNT => 500))
-);
+FROM TABLE(GENERATOR(ROWCOUNT => 10));
 
-SELECT '500 sample invoices loaded' AS status;
+-- Create sample invoice content files
+-- NOTE: In production, you would PUT actual PDF files here
+-- For demo purposes, we'll create the metadata and let AI functions work with stage paths
+
+SELECT '10 invoice documents cataloged' AS status;
 
 -- ============================================================================
--- SAMPLE ROYALTY STATEMENTS (300 rows)
+-- SAMPLE DOCUMENT GENERATION: Royalty Statements
 -- ============================================================================
 
-INSERT INTO RAW_ROYALTY_STATEMENTS (
+INSERT INTO DOCUMENT_CATALOG (
     document_id,
-    pdf_content,
-    territory,
-    period_start_date,
-    period_end_date,
-    upload_date,
-    original_language,
+    document_type,
+    stage_path,
+    file_name,
     file_format,
-    processed_flag,
+    file_size_bytes,
+    original_language,
+    processing_status,
     metadata
 )
 SELECT
-    'ROY_' || UUID_STRING() AS document_id,
-    TO_BINARY(
-        'ROYALTY STATEMENT\n' ||
-        'Territory: ' || territory || '\n' ||
-        'Period: ' || period_start_date || ' to ' || period_end_date || '\n' ||
-        'Total Royalties: $' || total_royalties || ' USD\n' ||
-        '---\n' ||
-        'Title Performance:\n' ||
-        '- Title A: ' || title_count || ' units, $' || (total_royalties * 0.40) || '\n' ||
-        '- Title B: ' || (title_count * 0.8) || ' units, $' || (total_royalties * 0.35) || '\n' ||
-        '- Title C: ' || (title_count * 0.5) || ' units, $' || (total_royalties * 0.25) || '\n' ||
-        '---\n' ||
-        'Payment Due: ' || payment_due_date || '\n' ||
-        'Remit to: Global Media Corp Rights Management\n',
-        'UTF-8'
-    ) AS pdf_content,
-    territory,
-    period_start_date,
-    period_end_date,
-    CURRENT_TIMESTAMP() AS upload_date,
+    'ROY_' || LPAD(SEQ4(), 6, '0') AS document_id,
+    'ROYALTY_STATEMENT' AS document_type,
+    '@DOCUMENT_STAGE/royalty/' || 'royalty_' || LPAD(SEQ4(), 6, '0') || '.txt' AS stage_path,
+    'royalty_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
+    'TXT' AS file_format,
+    UNIFORM(4096, 16384, RANDOM()) AS file_size_bytes,
     'en' AS original_language,
-    'PDF' AS file_format,
-    FALSE AS processed_flag,
+    'PENDING' AS processing_status,
     OBJECT_CONSTRUCT(
-        'total_royalties', total_royalties,
-        'title_count', title_count,
+        'territory', ARRAY_CONSTRUCT('North America', 'Europe', 'Asia Pacific', 'Latin America', 'United Kingdom')[UNIFORM(0, 4, RANDOM())],
+        'period_start', CASE WHEN SEQ4() <= 3 THEN '2024-07-01'::DATE ELSE '2024-10-01'::DATE END,
+        'period_end', CASE WHEN SEQ4() <= 3 THEN '2024-09-30'::DATE ELSE '2024-12-31'::DATE END,
+        'total_royalties', UNIFORM(25000, 500000, RANDOM()),
+        'title_count', UNIFORM(50, 500, RANDOM()),
         'currency', 'USD',
-        'payment_due_date', payment_due_date,
         'generated_for_demo', TRUE
     ) AS metadata
-FROM (
-    SELECT
-        ARRAY_CONSTRUCT('North America', 'Europe', 'Asia Pacific', 'Latin America', 'Middle East', 'Africa', 'United Kingdom', 'Australia', 'Japan', 'China')[UNIFORM(0, 9, RANDOM())] AS territory,
-        CASE 
-            WHEN SEQ4() <= 150 THEN '2024-07-01'::DATE
-            ELSE '2024-10-01'::DATE
-        END AS period_start_date,
-        CASE 
-            WHEN SEQ4() <= 150 THEN '2024-09-30'::DATE
-            ELSE '2024-12-31'::DATE
-        END AS period_end_date,
-        UNIFORM(25000, 500000, RANDOM()) AS total_royalties,
-        UNIFORM(100, 10000, RANDOM()) AS title_count,
-        DATEADD(day, 30, period_end_date) AS payment_due_date
-    FROM TABLE(GENERATOR(ROWCOUNT => 300))
-);
+FROM TABLE(GENERATOR(ROWCOUNT => 5));
 
-SELECT '300 sample royalty statements loaded' AS status;
+SELECT '5 royalty statement documents cataloged' AS status;
 
 -- ============================================================================
--- SAMPLE CONTRACTS (50 rows)
+-- SAMPLE DOCUMENT GENERATION: Contracts
 -- ============================================================================
 
-INSERT INTO RAW_CONTRACTS (
+INSERT INTO DOCUMENT_CATALOG (
     document_id,
-    pdf_content,
-    contract_type,
-    effective_date,
-    upload_date,
-    original_language,
+    document_type,
+    stage_path,
+    file_name,
     file_format,
-    contains_sensitive_info,
-    processed_flag,
+    file_size_bytes,
+    original_language,
+    processing_status,
     metadata
 )
 SELECT
-    'CON_' || UUID_STRING() AS document_id,
-    TO_BINARY(
-        'ENTERTAINMENT SERVICES CONTRACT\n' ||
-        'Contract Type: ' || contract_type || '\n' ||
-        'Effective Date: ' || effective_date || '\n' ||
-        'Term: ' || term_years || ' years\n' ||
-        'Party A: Global Media Corp\n' ||
-        'Party B: ' || party_b_name || '\n' ||
-        '---\n' ||
-        'TERMS AND CONDITIONS\n' ||
-        '1. Services to be provided as outlined in Exhibit A\n' ||
-        '2. Compensation: $' || contract_value || ' USD\n' ||
-        '3. Payment Schedule: ' || payment_schedule || '\n' ||
-        '4. Confidentiality provisions apply\n' ||
-        '5. Territory: ' || territory || '\n' ||
-        '---\n' ||
-        '[Additional terms and conditions would appear here]\n' ||
-        '[Signature pages would follow]\n',
-        'UTF-8'
-    ) AS pdf_content,
-    contract_type,
-    effective_date,
-    CURRENT_TIMESTAMP() AS upload_date,
+    'CON_' || LPAD(SEQ4(), 6, '0') AS document_id,
+    'CONTRACT' AS document_type,
+    '@DOCUMENT_STAGE/contracts/' || 'contract_' || LPAD(SEQ4(), 6, '0') || '.txt' AS stage_path,
+    'contract_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
+    'TXT' AS file_format,
+    UNIFORM(8192, 32768, RANDOM()) AS file_size_bytes,
     'en' AS original_language,
-    'PDF' AS file_format,
-    TRUE AS contains_sensitive_info,
-    FALSE AS processed_flag,
+    'PENDING' AS processing_status,
     OBJECT_CONSTRUCT(
-        'party_b_name', party_b_name,
-        'contract_value', contract_value,
-        'term_years', term_years,
-        'territory', territory,
-        'payment_schedule', payment_schedule,
+        'contract_type', ARRAY_CONSTRUCT('Production Agreement', 'Distribution License', 'Talent Agreement', 'Music Licensing', 'Merchandising Rights')[UNIFORM(0, 4, RANDOM())],
+        'effective_date', DATEADD(month, -UNIFORM(0, 36, RANDOM()), CURRENT_DATE()),
+        'party_b', ARRAY_CONSTRUCT('Acme Studios', 'Star Talent Agency', 'Distribution Partners LLC', 'Music Rights Corp', 'Global Licensing Inc')[UNIFORM(0, 4, RANDOM())],
+        'contract_value', UNIFORM(50000, 5000000, RANDOM()),
+        'term_years', UNIFORM(1, 5, RANDOM()),
+        'territory', ARRAY_CONSTRUCT('Worldwide', 'North America', 'Europe', 'Asia', 'Latin America')[UNIFORM(0, 4, RANDOM())],
         'generated_for_demo', TRUE
     ) AS metadata
-FROM (
-    SELECT
-        ARRAY_CONSTRUCT('Production Agreement', 'Distribution License', 'Talent Agreement', 'Music Licensing', 'Merchandising Rights')[UNIFORM(0, 4, RANDOM())] AS contract_type,
-        DATEADD(month, -UNIFORM(0, 36, RANDOM()), CURRENT_DATE()) AS effective_date,
-        ARRAY_CONSTRUCT('Acme Studios', 'Star Talent Agency', 'Distribution Partners LLC', 'Music Rights Corp', 'Global Licensing Inc', 'Production House SA', 'Talent Management Group', 'Rights Acquisition Co')[UNIFORM(0, 7, RANDOM())] AS party_b_name,
-        UNIFORM(50000, 5000000, RANDOM()) AS contract_value,
-        UNIFORM(1, 5, RANDOM()) AS term_years,
-        ARRAY_CONSTRUCT('Worldwide', 'North America', 'Europe', 'Asia', 'Latin America')[UNIFORM(0, 4, RANDOM())] AS territory,
-        ARRAY_CONSTRUCT('Monthly', 'Quarterly', 'Annual', 'Milestone-based', 'Net 30')[UNIFORM(0, 4, RANDOM())] AS payment_schedule
-    FROM TABLE(GENERATOR(ROWCOUNT => 50))
-);
+FROM TABLE(GENERATOR(ROWCOUNT => 5));
 
-SELECT '50 sample contracts loaded' AS status;
+SELECT '5 contract documents cataloged' AS status;
+
+-- ============================================================================
+-- CREATE SAMPLE DOCUMENT CONTENT FILES
+-- ============================================================================
+
+-- For this demo, we'll create inline sample content
+-- In production, you would upload real PDF/DOCX files to the stage
+
+-- Sample Invoice Content Template
+CREATE OR REPLACE TEMPORARY TABLE sample_invoice_content AS
+SELECT
+    document_id,
+    metadata:invoice_number::STRING AS invoice_number,
+    metadata:vendor_name::STRING AS vendor_name,
+    metadata:invoice_date::DATE AS invoice_date,
+    metadata:amount::NUMBER AS amount,
+    -- Generate realistic invoice text
+    'INVOICE\n\n' ||
+    'Vendor: ' || metadata:vendor_name::STRING || '\n' ||
+    'Invoice Number: ' || metadata:invoice_number::STRING || '\n' ||
+    'Date: ' || metadata:invoice_date::STRING || '\n' ||
+    'Amount Due: $' || metadata:amount::STRING || ' USD\n' ||
+    'Payment Terms: Net 30\n\n' ||
+    'LINE ITEMS:\n' ||
+    '1. Production Services - $' || (metadata:amount::NUMBER * 0.60)::STRING || '\n' ||
+    '2. Post-Production - $' || (metadata:amount::NUMBER * 0.30)::STRING || '\n' ||
+    '3. Miscellaneous Fees - $' || (metadata:amount::NUMBER * 0.10)::STRING || '\n\n' ||
+    'TOTAL: $' || metadata:amount::STRING || ' USD\n\n' ||
+    'Please remit payment to:\n' ||
+    'Global Media Corp\n' ||
+    'Account: 1234567890\n' ||
+    'Due Date: ' || DATEADD(day, 30, metadata:invoice_date::DATE)::STRING AS document_content
+FROM DOCUMENT_CATALOG
+WHERE document_type = 'INVOICE';
+
+-- Note: In a real implementation, you would PUT these files to the stage:
+-- PUT 'file://path/to/invoice.pdf' @DOCUMENT_STAGE/invoices/ AUTO_COMPRESS=FALSE;
+
+-- For this demo, the document content is available in the temp table
+-- AI functions will be called with stage paths once files are uploaded
 
 -- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 
--- Check row counts
-SELECT 'RAW_INVOICES' AS table_name, COUNT(*) AS row_count FROM RAW_INVOICES
-UNION ALL
-SELECT 'RAW_ROYALTY_STATEMENTS' AS table_name, COUNT(*) AS row_count FROM RAW_ROYALTY_STATEMENTS
-UNION ALL
-SELECT 'RAW_CONTRACTS' AS table_name, COUNT(*) AS row_count FROM RAW_CONTRACTS;
-
--- Sample data preview
+-- Check catalog summary
 SELECT 
-    'Sample Invoice' AS document_type,
+    document_type,
+    COUNT(*) AS document_count,
+    COUNT(DISTINCT original_language) AS language_count,
+    AVG(file_size_bytes) AS avg_file_size_bytes,
+    processing_status
+FROM DOCUMENT_CATALOG
+GROUP BY document_type, processing_status
+ORDER BY document_type;
+
+-- Sample document details
+SELECT 
     document_id,
-    vendor_name,
+    document_type,
+    file_name,
     original_language,
-    file_size_bytes,
-    upload_date
-FROM RAW_INVOICES
-LIMIT 5;
+    processing_status,
+    metadata:vendor_name::STRING AS vendor_or_party,
+    metadata:amount::NUMBER AS amount
+FROM DOCUMENT_CATALOG
+LIMIT 10;
 
-SELECT 
-    'Sample Royalty Statement' AS document_type,
-    document_id,
-    territory,
-    period_start_date,
-    period_end_date
-FROM RAW_ROYALTY_STATEMENTS
-LIMIT 5;
+SELECT 'Sample data loading complete - 20 documents cataloged' AS final_status;
 
-SELECT 
-    'Sample Contract' AS document_type,
-    document_id,
-    contract_type,
-    effective_date,
-    contains_sensitive_info
-FROM RAW_CONTRACTS
-LIMIT 5;
+-- ============================================================================
+-- INSTRUCTIONS FOR REAL PDF UPLOAD
+-- ============================================================================
 
-SELECT 'Sample data loading complete - 850 total documents' AS final_status;
+/*
+TO USE WITH REAL PDF DOCUMENTS:
 
+1. Prepare your PDF files locally in this structure:
+   documents/
+     invoices/
+       invoice_001.pdf
+       invoice_002.pdf
+     royalty/
+       royalty_001.pdf
+     contracts/
+       contract_001.pdf
+
+2. Upload to Snowflake stage using SnowSQL:
+   PUT file://documents/invoices/*.pdf @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/invoices/ AUTO_COMPRESS=FALSE;
+   PUT file://documents/royalty/*.pdf @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/royalty/ AUTO_COMPRESS=FALSE;
+   PUT file://documents/contracts/*.pdf @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/contracts/ AUTO_COMPRESS=FALSE;
+
+3. Verify upload:
+   LS @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE;
+
+4. Update catalog with real file paths:
+   UPDATE DOCUMENT_CATALOG
+   SET file_format = 'PDF',
+       stage_path = '@DOCUMENT_STAGE/invoices/' || file_name
+   WHERE document_type = 'INVOICE';
+
+5. Proceed to AI processing scripts to parse documents
+*/

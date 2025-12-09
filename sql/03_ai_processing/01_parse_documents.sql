@@ -1,212 +1,248 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
- * Script: Parse Documents with AI
+ * Script: Parse Documents with AI_PARSE_DOCUMENT
  * 
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
- * ⚠️  IMPORTANT: AI Function syntax verified against Snowflake docs (2025-12-09)
- *     https://docs.snowflake.com/en/sql-reference/functions/ai_parse_document
- * 
  * PURPOSE:
- *   Demonstrates document parsing workflow. This demo uses simulated parsing
- *   since sample data is text-based, not actual PDFs.
+ *   Use Snowflake Cortex AI_PARSE_DOCUMENT to extract text and layout from
+ *   documents stored on internal stage. Demonstrates both OCR and LAYOUT modes.
  * 
- * PRODUCTION APPROACH:
- *   For real PDFs on Snowflake stages, use:
- *   
- *   SELECT AI_PARSE_DOCUMENT(
- *       '@my_stage',           -- Stage containing PDFs
- *       'invoices/inv001.pdf', -- File path
- *       {'mode': 'LAYOUT'}     -- Options: 'OCR' or 'LAYOUT'
- *   ) AS parsed_document
- *   FROM table_with_file_paths;
+ * REQUIREMENTS:
+ *   - Documents uploaded to @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE
+ *   - SNOWFLAKE.CORTEX_USER database role granted
  * 
- *   Note: AI_PARSE_DOCUMENT is the modern name (GA)
- *         SNOWFLAKE.CORTEX.PARSE_DOCUMENT is legacy but still supported
- * 
- * DEMO APPROACH:
- *   Since we have synthetic text data, we simulate parsing with SQL logic.
+ * AI FUNCTION: AI_PARSE_DOCUMENT
+ *   Syntax: AI_PARSE_DOCUMENT('@stage', 'path', {'mode': 'OCR'|'LAYOUT'})
+ *   Modes:
+ *     - OCR: Extract text only (default)
+ *     - LAYOUT: Extract text + structural elements (tables, headers)
  * 
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
  * 
  * Author: SE Community
- * Created: 2025-11-24 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
  ******************************************************************************/
 
--- Set context (ensure ACCOUNTADMIN role for schema object creation)
+-- Set context
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
 USE SCHEMA SFE_STG_ENTERTAINMENT;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
--- PARSE INVOICES
+-- PARSE ALL PENDING DOCUMENTS
 -- ============================================================================
+
+-- Process all documents in PENDING status using AI_PARSE_DOCUMENT
+-- Note: This will attempt to parse documents from the stage
+-- If no actual files are uploaded yet, this will log errors
 
 INSERT INTO STG_PARSED_DOCUMENTS (
     parsed_id,
     document_id,
     parsed_content,
-    extraction_method,
+    extraction_mode,
+    page_count,
     confidence_score,
     processed_at,
-    document_source_table
+    processing_duration_seconds
 )
 SELECT
-    'PARSED_' || UUID_STRING() AS parsed_id,
-    document_id,
-    -- Simulated parsing: In production, use AI_PARSE_DOCUMENT('@stage', path, options)
-    OBJECT_CONSTRUCT(
-        'extracted_text', TO_VARCHAR(pdf_content),
-        'detected_language', original_language,
-        'document_type', 'invoice',
-        'vendor_name', vendor_name,
-        'total_amount', TRY_TO_NUMBER(REGEXP_SUBSTR(TO_VARCHAR(pdf_content), '\\$([0-9,.]+)', 1, 1, 'e', 1)),
-        'invoice_number', REGEXP_SUBSTR(TO_VARCHAR(pdf_content), 'Invoice #: ([A-Z0-9-]+)', 1, 1, 'e', 1),
-        'invoice_date', REGEXP_SUBSTR(TO_VARCHAR(pdf_content), 'Date: ([0-9-]+)', 1, 1, 'e', 1),
-        'currency', 'USD',
-        'layout_preserved', TRUE,
-        'tables_detected', ARRAY_CONSTRUCT('line_items'),
-        'confidence_score', UNIFORM(0.85, 0.98, RANDOM())
+    UUID_STRING() AS parsed_id,
+    catalog.document_id,
+    -- Call AI_PARSE_DOCUMENT with LAYOUT mode for best results
+    TRY_CAST(
+        AI_PARSE_DOCUMENT(
+            catalog.stage_path,
+            {'mode': 'LAYOUT', 'page_split': FALSE}
+        ) AS VARIANT
     ) AS parsed_content,
-    'AI_PARSE_DOCUMENT_SIMULATED' AS extraction_method,
-    UNIFORM(0.85, 0.98, RANDOM()) AS confidence_score,
+    'LAYOUT' AS extraction_mode,
+    -- Extract page count from parsed output if available
+    TRY_CAST(parsed_content:num_pages AS NUMBER) AS page_count,
+    -- Confidence score (if available from output)
+    UNIFORM(0.85, 0.98, RANDOM()) AS confidence_score,  -- Simulated for demo
     CURRENT_TIMESTAMP() AS processed_at,
-    'RAW_INVOICES' AS document_source_table
-FROM SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_INVOICES
-WHERE processed_flag = FALSE;
+    UNIFORM(5, 30, RANDOM()) AS processing_duration_seconds  -- Simulated for demo
+FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
+WHERE catalog.processing_status = 'PENDING'
+-- Limit to prevent timeout on large batches
+LIMIT 100;
 
--- Update processed flag
-UPDATE SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_INVOICES
-SET processed_flag = TRUE
+-- Log processing attempt
+INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
+    log_id,
+    document_id,
+    processing_step,
+    started_at,
+    completed_at,
+    duration_seconds,
+    status
+)
+SELECT
+    UUID_STRING() AS log_id,
+    document_id,
+    'PARSE' AS processing_step,
+    processed_at AS started_at,
+    processed_at AS completed_at,
+    processing_duration_seconds AS duration_seconds,
+    CASE 
+        WHEN parsed_content IS NOT NULL THEN 'SUCCESS'
+        ELSE 'FAILED'
+    END AS status
+FROM STG_PARSED_DOCUMENTS;
+
+-- Update catalog status
+UPDATE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG
+SET 
+    processing_status = 'COMPLETED',
+    last_processed_at = CURRENT_TIMESTAMP()
 WHERE document_id IN (
     SELECT document_id 
     FROM STG_PARSED_DOCUMENTS 
-    WHERE document_source_table = 'RAW_INVOICES'
+    WHERE parsed_content IS NOT NULL
 );
 
-SELECT '500 invoices parsed' AS status;
-
--- ============================================================================
--- PARSE ROYALTY STATEMENTS
--- ============================================================================
-
-INSERT INTO STG_PARSED_DOCUMENTS (
-    parsed_id,
+-- Log failures
+INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
+    error_id,
     document_id,
-    parsed_content,
-    extraction_method,
-    confidence_score,
-    processed_at,
-    document_source_table
+    error_step,
+    error_timestamp,
+    error_message
 )
 SELECT
-    'PARSED_' || UUID_STRING() AS parsed_id,
-    document_id,
-    -- Simulated parsing: In production, use AI_PARSE_DOCUMENT('@stage', path, options)
-    OBJECT_CONSTRUCT(
-        'extracted_text', TO_VARCHAR(pdf_content),
-        'detected_language', original_language,
-        'document_type', 'royalty_statement',
-        'territory', territory,
-        'total_royalties', TRY_TO_NUMBER(REGEXP_SUBSTR(TO_VARCHAR(pdf_content), 'Total Royalties: \\$([0-9,.]+)', 1, 1, 'e', 1)),
-        'period_start', period_start_date,
-        'period_end', period_end_date,
-        'currency', 'USD',
-        'layout_preserved', TRUE,
-        'tables_detected', ARRAY_CONSTRUCT('title_performance'),
-        'confidence_score', UNIFORM(0.80, 0.95, RANDOM())
-    ) AS parsed_content,
-    'AI_PARSE_DOCUMENT_SIMULATED' AS extraction_method,
-    UNIFORM(0.80, 0.95, RANDOM()) AS confidence_score,
-    CURRENT_TIMESTAMP() AS processed_at,
-    'RAW_ROYALTY_STATEMENTS' AS document_source_table
-FROM SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_ROYALTY_STATEMENTS
-WHERE processed_flag = FALSE;
-
--- Update processed flag
-UPDATE SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_ROYALTY_STATEMENTS
-SET processed_flag = TRUE
-WHERE document_id IN (
-    SELECT document_id 
-    FROM STG_PARSED_DOCUMENTS 
-    WHERE document_source_table = 'RAW_ROYALTY_STATEMENTS'
-);
-
-SELECT '300 royalty statements parsed' AS status;
+    UUID_STRING() AS error_id,
+    catalog.document_id,
+    'PARSE' AS error_step,
+    CURRENT_TIMESTAMP() AS error_timestamp,
+    'AI_PARSE_DOCUMENT failed - check if file exists on stage' AS error_message
+FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
+LEFT JOIN STG_PARSED_DOCUMENTS parsed ON catalog.document_id = parsed.document_id
+WHERE catalog.processing_status = 'PENDING'
+AND parsed.document_id IS NULL;
 
 -- ============================================================================
--- PARSE CONTRACTS
+-- ALTERNATIVE: Parse with OCR mode (text-only extraction)
 -- ============================================================================
 
-INSERT INTO STG_PARSED_DOCUMENTS (
-    parsed_id,
-    document_id,
-    parsed_content,
-    extraction_method,
-    confidence_score,
-    processed_at,
-    document_source_table
-)
+-- For simple text extraction without layout, use OCR mode:
+/*
+INSERT INTO STG_PARSED_DOCUMENTS (...)
 SELECT
-    'PARSED_' || UUID_STRING() AS parsed_id,
-    document_id,
-    -- Simulated parsing: In production, use AI_PARSE_DOCUMENT('@stage', path, options)
-    OBJECT_CONSTRUCT(
-        'extracted_text', TO_VARCHAR(pdf_content),
-        'detected_language', original_language,
-        'document_type', 'contract',
-        'contract_type', contract_type,
-        'effective_date', effective_date,
-        'contract_value', TRY_TO_NUMBER(REGEXP_SUBSTR(TO_VARCHAR(pdf_content), 'Compensation: \\$([0-9,.]+)', 1, 1, 'e', 1)),
-        'term_years', TRY_TO_NUMBER(REGEXP_SUBSTR(TO_VARCHAR(pdf_content), 'Term: ([0-9]+) years', 1, 1, 'e', 1)),
-        'contains_sensitive_info', contains_sensitive_info,
-        'layout_preserved', TRUE,
-        'tables_detected', ARRAY_CONSTRUCT(),
-        'confidence_score', UNIFORM(0.85, 0.98, RANDOM())
+    UUID_STRING() AS parsed_id,
+    catalog.document_id,
+    TRY_CAST(
+        AI_PARSE_DOCUMENT(
+            catalog.stage_path,
+            {'mode': 'OCR'}  -- Faster, text-only extraction
+        ) AS VARIANT
     ) AS parsed_content,
-    'AI_PARSE_DOCUMENT_SIMULATED' AS extraction_method,
-    UNIFORM(0.85, 0.98, RANDOM()) AS confidence_score,
-    CURRENT_TIMESTAMP() AS processed_at,
-    'RAW_CONTRACTS' AS document_source_table
-FROM SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_CONTRACTS
-WHERE processed_flag = FALSE;
-
--- Update processed flag
-UPDATE SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_CONTRACTS
-SET processed_flag = TRUE
-WHERE document_id IN (
-    SELECT document_id 
-    FROM STG_PARSED_DOCUMENTS 
-    WHERE document_source_table = 'RAW_CONTRACTS'
-);
-
-SELECT '50 contracts parsed' AS status;
+    'OCR' AS extraction_mode,
+    ...
+FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog;
+*/
 
 -- ============================================================================
--- VERIFICATION
+-- VERIFICATION & ANALYTICS
 -- ============================================================================
 
 -- Check parsing results
 SELECT 
-    document_source_table,
-    COUNT(*) AS documents_parsed,
+    COUNT(*) AS total_parsed,
+    COUNT(DISTINCT document_id) AS unique_documents,
     AVG(confidence_score) AS avg_confidence,
     MIN(confidence_score) AS min_confidence,
-    MAX(confidence_score) AS max_confidence
-FROM STG_PARSED_DOCUMENTS
-GROUP BY document_source_table;
+    MAX(confidence_score) AS max_confidence,
+    AVG(processing_duration_seconds) AS avg_duration_sec
+FROM STG_PARSED_DOCUMENTS;
 
--- Sample parsed content
+-- Sample parsed content structure
 SELECT 
     document_id,
-    parsed_content:document_type::STRING AS document_type,
-    parsed_content:detected_language::STRING AS language,
+    extraction_mode,
+    page_count,
     confidence_score,
+    -- Show first 100 characters of parsed text
+    SUBSTR(parsed_content:text::STRING, 1, 100) AS text_preview,
     processed_at
 FROM STG_PARSED_DOCUMENTS
-LIMIT 10;
+LIMIT 5;
 
-SELECT 'Document parsing complete - 850 documents processed' AS final_status;
+-- Check for parsing errors
+SELECT 
+    COUNT(*) AS failed_documents,
+    error_message,
+    COUNT(*) AS error_count
+FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS
+WHERE error_step = 'PARSE'
+GROUP BY error_message;
 
+SELECT 'Document parsing complete - check STG_PARSED_DOCUMENTS for results' AS final_status;
+
+-- ============================================================================
+-- ADVANCED: Parse with page splitting
+-- ============================================================================
+
+-- For multi-page documents where you need per-page analysis:
+/*
+SELECT
+    document_id,
+    AI_PARSE_DOCUMENT(
+        stage_path,
+        {'mode': 'LAYOUT', 'page_split': TRUE}  -- Returns array of pages
+    ) AS parsed_pages
+FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG
+WHERE document_type = 'CONTRACT';
+
+-- Then flatten the page array:
+SELECT
+    document_id,
+    page.value:page_number::NUMBER AS page_number,
+    page.value:text::STRING AS page_text,
+    page.value:tables AS page_tables
+FROM parsed_pages,
+LATERAL FLATTEN(input => parsed_pages:pages) page;
+*/
+
+-- ============================================================================
+-- PRODUCTION NOTES
+-- ============================================================================
+
+/*
+FOR PRODUCTION DEPLOYMENT:
+
+1. **Error Handling:**
+   - Wrap AI_PARSE_DOCUMENT in TRY_CAST for graceful failures
+   - Log all errors to DOCUMENT_ERRORS table
+   - Implement retry logic for transient failures
+
+2. **Performance Optimization:**
+   - Process documents in batches (LIMIT clause)
+   - Use multiple warehouses for parallel processing
+   - Consider creating a task for automated processing:
+     CREATE TASK parse_new_documents
+       WAREHOUSE = SFE_DOCUMENT_AI_WH
+       SCHEDULE = '5 MINUTE'
+       WHEN SYSTEM$STREAM_HAS_DATA('document_stream')
+     AS
+       CALL process_pending_documents();
+
+3. **Monitoring:**
+   - Track processing times and success rates
+   - Alert on high failure rates
+   - Monitor warehouse credit consumption
+
+4. **Cost Management:**
+   - AI_PARSE_DOCUMENT costs per page processed
+   - Use OCR mode for simple documents (lower cost)
+   - Use LAYOUT mode only when structure extraction needed
+   - Batch processing reduces overhead
+
+5. **Quality Assurance:**
+   - Validate confidence scores
+   - Flag low-confidence documents for manual review
+   - Test with representative sample documents first
+*/

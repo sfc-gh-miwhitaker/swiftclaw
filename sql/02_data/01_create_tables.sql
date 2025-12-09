@@ -5,19 +5,20 @@
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
  * PURPOSE:
- *   Create tables for storing raw documents, AI processing results, and
+ *   Create tables for storing document metadata, AI processing results, and
  *   business insights across all three schema layers.
  * 
  * OBJECTS CREATED:
  *   RAW LAYER (3 tables):
- *   - RAW_INVOICES: Vendor invoice PDFs
- *   - RAW_ROYALTY_STATEMENTS: Royalty payment statements
- *   - RAW_CONTRACTS: Entertainment industry contracts
+ *   - DOCUMENT_CATALOG: Document metadata and stage paths
+ *   - DOCUMENT_PROCESSING_LOG: Processing status tracking
+ *   - DOCUMENT_ERRORS: Error tracking for failed processing
  * 
- *   STAGING LAYER (3 tables):
+ *   STAGING LAYER (4 tables):
  *   - STG_PARSED_DOCUMENTS: AI_PARSE_DOCUMENT results
  *   - STG_TRANSLATED_CONTENT: AI_TRANSLATE results
- *   - STG_CLASSIFIED_DOCS: AI_FILTER results
+ *   - STG_CLASSIFIED_DOCS: AI_CLASSIFY results
+ *   - STG_EXTRACTED_ENTITIES: AI_EXTRACT results
  * 
  *   ANALYTICS LAYER (1 table):
  *   - FCT_DOCUMENT_INSIGHTS: Aggregated business metrics
@@ -26,7 +27,7 @@
  *   See sql/99_cleanup/teardown_all.sql
  * 
  * Author: SE Community
- * Created: 2025-11-24 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
  ******************************************************************************/
 
 -- Set context (ensure ACCOUNTADMIN role for table creation)
@@ -35,49 +36,50 @@ USE DATABASE SNOWFLAKE_EXAMPLE;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
--- RAW LAYER: Binary Document Storage
+-- RAW LAYER: Document Catalog and Tracking
 -- ============================================================================
 
--- Raw Invoices Table
-CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.RAW_INVOICES (
+-- Document Catalog: Metadata for all documents
+CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG (
     document_id STRING PRIMARY KEY,
-    pdf_content BINARY,
-    vendor_name STRING,
-    upload_date TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    original_language STRING DEFAULT 'en',
+    document_type STRING NOT NULL,  -- 'INVOICE', 'ROYALTY_STATEMENT', 'CONTRACT'
+    stage_path STRING NOT NULL,     -- Path in @DOCUMENT_STAGE
+    file_name STRING NOT NULL,
     file_format STRING DEFAULT 'PDF',
     file_size_bytes NUMBER,
-    processed_flag BOOLEAN DEFAULT FALSE,
-    metadata VARIANT
-) COMMENT = 'DEMO: swiftclaw - Raw vendor invoice documents | Expires: 2025-12-24 | Author: SE Community';
-
--- Raw Royalty Statements Table
-CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.RAW_ROYALTY_STATEMENTS (
-    document_id STRING PRIMARY KEY,
-    pdf_content BINARY,
-    territory STRING,
-    period_start_date DATE,
-    period_end_date DATE,
-    upload_date TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     original_language STRING DEFAULT 'en',
-    file_format STRING DEFAULT 'PDF',
-    processed_flag BOOLEAN DEFAULT FALSE,
-    metadata VARIANT
-) COMMENT = 'DEMO: swiftclaw - Raw royalty payment statements | Expires: 2025-12-24 | Author: SE Community';
-
--- Raw Contracts Table
-CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.RAW_CONTRACTS (
-    document_id STRING PRIMARY KEY,
-    pdf_content BINARY,
-    contract_type STRING,
-    effective_date DATE,
     upload_date TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    original_language STRING DEFAULT 'en',
-    file_format STRING DEFAULT 'PDF',
-    contains_sensitive_info BOOLEAN DEFAULT TRUE,
-    processed_flag BOOLEAN DEFAULT FALSE,
-    metadata VARIANT
-) COMMENT = 'DEMO: swiftclaw - Raw entertainment industry contracts | Expires: 2025-12-24 | Author: SE Community';
+    processing_status STRING DEFAULT 'PENDING',  -- 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'
+    last_processed_at TIMESTAMP_NTZ,
+    metadata VARIANT,  -- Additional business metadata
+    COMMENT 'DEMO: swiftclaw - Document catalog with stage paths | Expires: 2025-12-24 | Author: SE Community'
+);
+
+-- Processing Log: Track processing attempts and timing
+CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
+    log_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
+    document_id STRING NOT NULL,
+    processing_step STRING NOT NULL,  -- 'PARSE', 'TRANSLATE', 'CLASSIFY', 'EXTRACT'
+    started_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    completed_at TIMESTAMP_NTZ,
+    duration_seconds NUMBER,
+    status STRING,  -- 'SUCCESS', 'FAILED'
+    error_message STRING,
+    COMMENT 'DEMO: swiftclaw - Processing audit log | Expires: 2025-12-24 | Author: SE Community'
+);
+
+-- Error Tracking: Detailed error information
+CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
+    error_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
+    document_id STRING NOT NULL,
+    error_step STRING NOT NULL,
+    error_timestamp TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    error_code STRING,
+    error_message STRING,
+    error_details VARIANT,
+    retry_count NUMBER DEFAULT 0,
+    COMMENT 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2025-12-24 | Author: SE Community'
+);
 
 SELECT 'Raw layer tables created: 3 tables' AS status;
 
@@ -87,38 +89,55 @@ SELECT 'Raw layer tables created: 3 tables' AS status;
 
 -- Parsed Documents Table (AI_PARSE_DOCUMENT results)
 CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS (
-    parsed_id STRING PRIMARY KEY,
+    parsed_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     document_id STRING NOT NULL,
-    parsed_content VARIANT,  -- JSON output from AI_PARSE_DOCUMENT
-    extraction_method STRING DEFAULT 'AI_PARSE_DOCUMENT',
+    parsed_content VARIANT NOT NULL,  -- Full JSON output from AI_PARSE_DOCUMENT
+    extraction_mode STRING,  -- 'OCR' or 'LAYOUT'
+    page_count NUMBER,
     confidence_score FLOAT,
     processed_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    document_source_table STRING  -- 'RAW_INVOICES', 'RAW_ROYALTY_STATEMENTS', etc.
-) COMMENT = 'DEMO: swiftclaw - AI parsed document content | Expires: 2025-12-24 | Author: SE Community';
+    processing_duration_seconds NUMBER,
+    COMMENT 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2025-12-24 | Author: SE Community'
+);
 
 -- Translated Content Table (AI_TRANSLATE results)
 CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT (
-    translation_id STRING PRIMARY KEY,
+    translation_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     parsed_id STRING NOT NULL,
-    source_language STRING,
+    source_language STRING NOT NULL,
     target_language STRING DEFAULT 'en',
-    translated_content VARIANT,  -- JSON with translated text
+    source_text STRING,
+    translated_text STRING NOT NULL,
     translation_confidence FLOAT,
-    translated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
-) COMMENT = 'DEMO: swiftclaw - AI translated content | Expires: 2025-12-24 | Author: SE Community';
+    translated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    COMMENT 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2025-12-24 | Author: SE Community'
+);
 
--- Classified Documents Table (AI_FILTER results)
+-- Classified Documents Table (AI_CLASSIFY results)
 CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_CLASSIFIED_DOCS (
-    classification_id STRING PRIMARY KEY,
+    classification_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     parsed_id STRING NOT NULL,
-    document_type STRING,  -- 'Invoice', 'Royalty Statement', 'Contract', 'Other'
+    document_type STRING NOT NULL,  -- Predicted type
     priority_level STRING,  -- 'High', 'Medium', 'Low'
     business_category STRING,
     classification_confidence FLOAT,
-    classified_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
-) COMMENT = 'DEMO: swiftclaw - AI classified documents | Expires: 2025-12-24 | Author: SE Community';
+    classification_details VARIANT,  -- Full AI_CLASSIFY response
+    classified_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    COMMENT 'DEMO: swiftclaw - AI_CLASSIFY results | Expires: 2025-12-24 | Author: SE Community'
+);
 
-SELECT 'Staging layer tables created: 3 transient tables' AS status;
+-- Extracted Entities Table (AI_EXTRACT results)
+CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_EXTRACTED_ENTITIES (
+    extraction_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
+    parsed_id STRING NOT NULL,
+    entity_type STRING NOT NULL,  -- 'invoice_number', 'amount', 'vendor', etc.
+    entity_value STRING NOT NULL,
+    extraction_confidence FLOAT,
+    extracted_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    COMMENT 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2025-12-24 | Author: SE Community'
+);
+
+SELECT 'Staging layer tables created: 4 transient tables' AS status;
 
 -- ============================================================================
 -- ANALYTICS LAYER: Business Insights
@@ -126,7 +145,7 @@ SELECT 'Staging layer tables created: 3 transient tables' AS status;
 
 -- Document Insights Fact Table
 CREATE OR REPLACE TABLE SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS (
-    insight_id STRING PRIMARY KEY,
+    insight_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     document_id STRING NOT NULL,
     document_type STRING,
     total_amount FLOAT,
@@ -134,11 +153,13 @@ CREATE OR REPLACE TABLE SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS (
     document_date DATE,
     vendor_territory STRING,
     processing_time_seconds NUMBER,
-    confidence_score FLOAT,
+    overall_confidence_score FLOAT,
     requires_manual_review BOOLEAN DEFAULT FALSE,
+    manual_review_reason STRING,
     insight_created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    metadata VARIANT
-) COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2025-12-24 | Author: SE Community';
+    metadata VARIANT,
+    COMMENT 'DEMO: swiftclaw - Aggregated document insights | Expires: 2025-12-24 | Author: SE Community'
+);
 
 -- ============================================================================
 -- VERIFICATION
@@ -149,3 +170,4 @@ SHOW TABLES IN SCHEMA SFE_RAW_ENTERTAINMENT;
 SHOW TABLES IN SCHEMA SFE_STG_ENTERTAINMENT;
 SHOW TABLES IN SCHEMA SFE_ANALYTICS_ENTERTAINMENT;
 
+SELECT 'All tables created successfully - 8 total tables' AS final_status;

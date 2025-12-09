@@ -51,6 +51,19 @@ CREATE SCHEMA IF NOT EXISTS SFE_ANALYTICS_ENTERTAINMENT
     COMMENT = 'DEMO: swiftclaw - Analytics layer for business insights and metrics | Expires: 2025-12-24 | Author: SE Community';
 
 -- ============================================================================
+-- DOCUMENT STAGE: Storage for AI Processing
+-- ============================================================================
+
+-- Create internal stage for document files
+-- AI_PARSE_DOCUMENT requires documents to be on a Snowflake stage
+CREATE STAGE IF NOT EXISTS SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE
+    DIRECTORY = (ENABLE = TRUE)
+    COMMENT = 'DEMO: swiftclaw - Internal stage for document files (PDF, DOCX, etc.) | Expires: 2025-12-24 | Author: SE Community';
+
+-- Verify stage created successfully
+SHOW STAGES IN SCHEMA SFE_RAW_ENTERTAINMENT;
+
+-- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 

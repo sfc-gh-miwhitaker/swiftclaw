@@ -4,7 +4,7 @@
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
  * DEMONSTRATION PROJECT - EXPIRES: 2025-12-24
- * This demo uses Snowflake AI Functions current as of November 2024.
+ * This demo uses Snowflake AI Functions validated as of December 2025.
  * After expiration, this repository will be archived.
  * 
  * 🚀 DESIGNED FOR "RUN ALL" EXECUTION:
@@ -20,8 +20,15 @@
  *   - Creates API integration for GitHub repository access
  *   - Creates Git repository stage with demo SQL scripts
  *   - Creates dedicated XSMALL warehouse for AI processing
- *   - Executes setup, data, and processing scripts from Git
+ *   - Creates internal stage for document files (PDF, DOCX, etc.)
+ *   - Executes setup, data, and REAL AI processing scripts from Git
  *   - Deploys Streamlit dashboard for document processing UI
+ * 
+ * AI FUNCTIONS USED (All GA/Production-Ready):
+ *   - AI_PARSE_DOCUMENT: Extract text and layout from documents
+ *   - AI_TRANSLATE: Translate multilingual content
+ *   - AI_CLASSIFY: Categorize documents with enhanced descriptions
+ *   - AI_EXTRACT: Extract entities without regex patterns
  * 
  * REQUIREMENTS:
  *   - ACCOUNTADMIN role (for API integration creation)
@@ -72,15 +79,14 @@ SELECT
 -- Switch to ACCOUNTADMIN (required for API integration creation)
 USE ROLE ACCOUNTADMIN;
 
--- Set statement timeout to 1 hour (deployment may take time)
-ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = 3600;
-
 -- ============================================================================
 -- SECTION 2: API INTEGRATION FOR GITHUB ACCESS
 -- ============================================================================
 
--- Create API integration for Git HTTPS access (if not exists)
-CREATE API INTEGRATION IF NOT EXISTS SFE_GIT_API_INTEGRATION
+-- Create or replace API integration for Git HTTPS access
+-- NOTE: Using CREATE OR REPLACE to ensure allowed prefixes are updated
+--       if integration already exists with different settings
+CREATE OR REPLACE API INTEGRATION SFE_GIT_API_INTEGRATION
     API_PROVIDER = GIT_HTTPS_API
     API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-miwhitaker/')
     ENABLED = TRUE
@@ -169,21 +175,26 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 -- ============================================================================
 -- SECTION 8: AI PROCESSING SCRIPTS (from Git Repository)
 -- ============================================================================
+-- NOTE: These scripts use REAL Snowflake Cortex AI Functions
+--       Requires documents to be uploaded to stage for processing
 
--- Execute: AI_PARSE_DOCUMENT processing
+-- Execute: AI_PARSE_DOCUMENT - Extract text and layout from documents
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/01_parse_documents.sql;
 
--- Execute: AI_TRANSLATE processing
+-- Execute: AI_TRANSLATE - Translate non-English content to English
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/02_translate_content.sql;
 
--- Execute: AI_FILTER classification
+-- Execute: AI_CLASSIFY - Classify documents by type and priority
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/03_classify_documents.sql;
 
--- Execute: AI_AGG aggregation
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/04_aggregate_insights.sql;
+-- Execute: AI_EXTRACT - Extract entities from documents
+EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/04_extract_entities.sql;
 
--- Execute: Create monitoring view
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_create_monitoring_view.sql;
+-- Execute: Aggregate insights - Combine all AI results
+EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_aggregate_insights.sql;
+
+-- Execute: Create monitoring view - Real-time metrics
+EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/06_create_monitoring_view.sql;
 
 -- ============================================================================
 -- SECTION 9: STREAMLIT DASHBOARD
@@ -248,7 +259,11 @@ SELECT '  - Git Repository: sfe_swiftclaw_repo' AS message
 UNION ALL
 SELECT '  - Schemas: SFE_RAW_ENTERTAINMENT, SFE_STG_ENTERTAINMENT, SFE_ANALYTICS_ENTERTAINMENT' AS message
 UNION ALL
-SELECT '  - Tables: 7 tables across all schemas' AS message
+SELECT '  - Stage: DOCUMENT_STAGE (for file uploads)' AS message
+UNION ALL
+SELECT '  - Tables: 8 tables (catalog, logs, staging, analytics)' AS message
+UNION ALL
+SELECT '  - AI Processing: PARSE → TRANSLATE → CLASSIFY → EXTRACT pipeline' AS message
 UNION ALL
 SELECT '  - Streamlit: SFE_DOCUMENT_DASHBOARD' AS message
 UNION ALL
@@ -258,13 +273,17 @@ SELECT '' AS message
 UNION ALL
 SELECT 'Next Steps:' AS message
 UNION ALL
-SELECT '  1. Switch role: USE ROLE SFE_DEMO_ROLE;' AS message
+SELECT '  1. Upload documents (optional): PUT file:///*.pdf @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;' AS message
 UNION ALL
-SELECT '  2. Open Streamlit: Home → Streamlit → SFE_DOCUMENT_DASHBOARD' AS message
+SELECT '  2. Switch role: USE ROLE SFE_DEMO_ROLE;' AS message
 UNION ALL
-SELECT '  3. Explore sample data: SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS LIMIT 10;' AS message
+SELECT '  3. Open Streamlit: Home → Streamlit → SFE_DOCUMENT_DASHBOARD' AS message
 UNION ALL
-SELECT '  4. View processing metrics: SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_METRICS;' AS message
+SELECT '  4. View insights: SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS LIMIT 10;' AS message
+UNION ALL
+SELECT '  5. View metrics: SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_METRICS;' AS message
+UNION ALL
+SELECT '  6. Check document catalog: SELECT * FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG;' AS message
 UNION ALL
 SELECT '' AS message
 UNION ALL
