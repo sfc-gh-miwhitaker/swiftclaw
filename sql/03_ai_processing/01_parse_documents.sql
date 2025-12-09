@@ -53,9 +53,13 @@ SELECT
     UUID_STRING() AS parsed_id,
     catalog.document_id,
     -- Call AI_PARSE_DOCUMENT with LAYOUT mode for best results
+    -- Note: AI_PARSE_DOCUMENT requires stage and path as separate arguments
+    -- Stage path format: '@DOCUMENT_STAGE/path/to/file.pdf'
+    -- Split into: '@DOCUMENT_STAGE' and 'path/to/file.pdf'
     TRY_CAST(
         AI_PARSE_DOCUMENT(
-            catalog.stage_path,
+            SPLIT_PART(catalog.stage_path, '/', 1),  -- '@DOCUMENT_STAGE'
+            SUBSTRING(catalog.stage_path, LENGTH(SPLIT_PART(catalog.stage_path, '/', 1)) + 2),  -- 'path/to/file.pdf'
             {'mode': 'LAYOUT', 'page_split': FALSE}
         ) AS VARIANT
     ) AS parsed_content,
@@ -130,13 +134,23 @@ AND parsed.document_id IS NULL;
 
 -- For simple text extraction without layout, use OCR mode:
 /*
+-- Example with direct stage reference (if you know the exact path):
+SELECT
+    AI_PARSE_DOCUMENT(
+        '@DOCUMENT_STAGE',               -- Stage name
+        'invoices/invoice_001.pdf',      -- File path within stage
+        {'mode': 'OCR'}                  -- OCR mode (text only)
+    ) AS parsed_content;
+
+-- Or using catalog with path splitting:
 INSERT INTO STG_PARSED_DOCUMENTS (...)
 SELECT
     UUID_STRING() AS parsed_id,
     catalog.document_id,
     TRY_CAST(
         AI_PARSE_DOCUMENT(
-            catalog.stage_path,
+            SPLIT_PART(catalog.stage_path, '/', 1),  -- Stage
+            SUBSTRING(catalog.stage_path, LENGTH(SPLIT_PART(catalog.stage_path, '/', 1)) + 2),  -- Path
             {'mode': 'OCR'}  -- Faster, text-only extraction
         ) AS VARIANT
     ) AS parsed_content,
@@ -191,7 +205,8 @@ SELECT 'Document parsing complete - check STG_PARSED_DOCUMENTS for results' AS f
 SELECT
     document_id,
     AI_PARSE_DOCUMENT(
-        stage_path,
+        '@DOCUMENT_STAGE',              -- Stage name
+        'contracts/contract_001.pdf',   -- File path
         {'mode': 'LAYOUT', 'page_split': TRUE}  -- Returns array of pages
     ) AS parsed_pages
 FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG

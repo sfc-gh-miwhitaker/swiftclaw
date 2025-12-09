@@ -240,12 +240,14 @@ This demo is designed for complete execution within Snowflake with no external d
 ### 1. Parse Documents with AI_PARSE_DOCUMENT
 ```sql
 -- Extract text and layout from documents on stage
+-- AI_PARSE_DOCUMENT requires 3 arguments: stage, path, options
 SELECT 
     catalog.document_id,
     catalog.file_name,
     AI_PARSE_DOCUMENT(
-        catalog.stage_path,           -- '@DOCUMENT_STAGE/invoices/invoice_001.pdf'
-        {'mode': 'LAYOUT'}             -- 'OCR' (text only) or 'LAYOUT' (with structure)
+        '@DOCUMENT_STAGE',              -- Stage name (with @)
+        'invoices/invoice_001.pdf',     -- File path within stage
+        {'mode': 'LAYOUT'}              -- 'OCR' (text only) or 'LAYOUT' (with structure)
     ) AS parsed_document
 FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
 WHERE catalog.document_type = 'INVOICE'
