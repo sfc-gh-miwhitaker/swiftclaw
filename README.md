@@ -59,16 +59,24 @@ Follow these steps in order to deploy and explore the demo:
    - Click "Run All"
    - Wait ~10 minutes for complete deployment
 
-3. **Explore** (15 min)
-   - Read `docs/02-USAGE.md`
-   - Open Streamlit app: `SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUMENT_DASHBOARD`
-   - Review sample document processing results
+3. **Upload Real PDFs** (5 min) - *Optional but recommended*
+   - Open Streamlit: Home → Streamlit → `SFE_DOCUMENT_DASHBOARD`
+   - Click **📤 Upload Documents** in sidebar
+   - Drag and drop PDFs from `pdfs/` folder (6 multilingual bridge contracts)
+   - Follow on-screen instructions to complete upload
+   - Run AI processing scripts from the Upload page
 
-4. **Cleanup** (2 min)
+4. **Explore Results** (15 min)
+   - Read `docs/02-USAGE.md`
+   - View document insights in the main dashboard
+   - Review AI parsing, translation, classification results
+   - Explore charts and manual review queue
+
+5. **Cleanup** (2 min)
    - Read `docs/03-CLEANUP.md`
    - Run `sql/99_cleanup/teardown_all.sql`
 
-**Total setup time: ~30 minutes**
+**Total setup time: ~35 minutes (including PDF upload)**
 
 **📋 Additional Documentation:**
 - `docs/05-CHANGELOG-UPDATETHEWORLD.md` - Modernization updates (2025-12-09)
@@ -232,6 +240,75 @@ This demo is designed for complete execution within Snowflake with no external d
 **Architecture Compliance:** This demonstrates the **Native Snowflake Architecture** pattern mandated by core rules - all workloads execute inside Snowflake unless technically impossible.
 
 **Real AI Processing:** All AI function calls are real - no simulation, no mocking. The demo uses actual Snowflake Cortex AI Functions that are production-ready (GA). Upload your own PDFs to see real AI parsing, translation, classification, and extraction in action!
+
+---
+
+## Uploading Your Own PDF Documents
+
+The demo includes 6 multilingual bridge loan contract PDFs in the `pdfs/` folder. Here's how to process them with AI Functions:
+
+### Upload via Streamlit UI (Drag & Drop)
+
+1. **Deploy the demo** - Run `deploy_all.sql` in Snowsight (10 minutes)
+
+2. **Open the Upload page** - Navigate to the Streamlit dashboard:
+   - Home → Streamlit → `SFE_DOCUMENT_DASHBOARD`
+   - Click **📤 Upload Documents** in the sidebar
+
+3. **Upload your PDFs** - Drag and drop files:
+   - Select document type (Invoice, Royalty Statement, Contract, Other)
+   - Select original language (EN, ES, DE, PT, RU, ZH, FR, JA, KO)
+   - Drag PDFs from `pdfs/` folder into the upload area
+   - Click to browse and select multiple files at once
+
+4. **Wait for cataloging** - Files are registered in the catalog automatically
+
+5. **Complete the upload** - Follow the on-screen instructions:
+   - Navigate to: **Data** → **Databases** → **SNOWFLAKE_EXAMPLE** → **SFE_RAW_ENTERTAINMENT** → **Stages**
+   - Click **DOCUMENT_STAGE** → **"+ Files"** → **contracts/** directory
+   - Upload the same PDFs to complete the process
+   - Verify files appear in stage listing
+
+6. **Process with AI** - Run the processing pipeline from Snowsight:
+```sql
+USE ROLE ACCOUNTADMIN;
+USE DATABASE SNOWFLAKE_EXAMPLE;
+USE WAREHOUSE SFE_DOCUMENT_AI_WH;
+
+-- Run AI processing pipeline
+EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/01_parse_documents.sql;
+EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/02_translate_content.sql;
+EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/03_classify_documents.sql;
+EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/04_extract_entities.sql;
+EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_aggregate_insights.sql;
+```
+
+7. **View results** - Return to the Streamlit dashboard to see AI insights!
+
+### Included PDF Documents
+
+The `pdfs/` folder contains 6 multilingual bridge loan contracts:
+
+| File | Language | Pages | Use Case |
+|------|----------|-------|----------|
+| `bridge_en.pdf` | English | 11 | Bridge loan contract (original) |
+| `bridge_es.pdf` | Spanish | 12 | Translation for Latin America |
+| `bridge_de.pdf` | German | 12 | Translation for Germany/Austria |
+| `bridge_pt.pdf` | Portuguese | 12 | Translation for Brazil/Portugal |
+| `bridge_ru.pdf` | Russian | 11 | Translation for Russia/CIS |
+| `bridge_zh.pdf` | Chinese | 11 | Translation for China/Taiwan |
+
+### Security Features
+
+**Server-Side Encryption (SSE):**
+- All documents encrypted at rest with `ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')`
+- Automatic encryption/decryption (transparent to AI Functions)
+- Zero configuration required
+
+**Access Controls:**
+- Role-based access to stage and catalog
+- Audit trail in `DOCUMENT_PROCESSING_LOG`
+- Error tracking in `DOCUMENT_ERRORS`
 
 ---
 

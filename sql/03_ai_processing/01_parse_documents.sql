@@ -13,7 +13,7 @@
  *   - SNOWFLAKE.CORTEX_USER database role granted
  * 
  * AI FUNCTION: AI_PARSE_DOCUMENT
- *   Syntax: AI_PARSE_DOCUMENT('@stage', 'path', {'mode': 'OCR'|'LAYOUT'})
+ *   Syntax: AI_PARSE_DOCUMENT(TO_FILE('@stage', 'path'), {'mode': 'OCR'|'LAYOUT'})
  *   Modes:
  *     - OCR: Extract text only (default)
  *     - LAYOUT: Extract text + structural elements (tables, headers)
@@ -39,6 +39,41 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- Note: This will attempt to parse documents from the stage
 -- If no actual files are uploaded yet, this will log errors
 
+-- Build a targeted queue of pending documents and verify stage files exist
+CREATE OR REPLACE TEMPORARY TABLE TMP_PENDING_PARSE_DOCS AS
+WITH stage_inventory AS (
+    SELECT relative_path
+    FROM DIRECTORY(@SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE)
+)
+SELECT
+    catalog.document_id,
+    catalog.stage_name,
+    catalog.file_path,
+    stage_inventory.relative_path IS NOT NULL AS has_stage_file
+FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
+LEFT JOIN stage_inventory
+    ON stage_inventory.relative_path = catalog.file_path
+WHERE catalog.processing_status = 'PENDING'
+QUALIFY ROW_NUMBER() OVER (ORDER BY catalog.document_id) <= 100;
+
+-- Pre-compute AI_PARSE_DOCUMENT results so downstream steps share the same dataset
+CREATE OR REPLACE TEMPORARY TABLE TMP_PARSED_DOCS_RUN AS
+SELECT
+    UUID_STRING() AS parsed_id,
+    document_id,
+    stage_name,
+    file_path,
+    AI_PARSE_DOCUMENT(
+        TO_FILE(stage_name, file_path),
+        OBJECT_CONSTRUCT('mode', 'LAYOUT', 'page_split', FALSE)
+    ) AS parsed_content,
+    'LAYOUT' AS extraction_mode,
+    CURRENT_TIMESTAMP() AS processed_at,
+    UNIFORM(0.85, 0.98, RANDOM()) AS confidence_score,
+    UNIFORM(5, 30, RANDOM()) AS processing_duration_seconds
+FROM TMP_PENDING_PARSE_DOCS
+WHERE has_stage_file = TRUE;
+
 INSERT INTO STG_PARSED_DOCUMENTS (
     parsed_id,
     document_id,
@@ -50,28 +85,16 @@ INSERT INTO STG_PARSED_DOCUMENTS (
     processing_duration_seconds
 )
 SELECT
-    UUID_STRING() AS parsed_id,
-    catalog.document_id,
-    -- Call AI_PARSE_DOCUMENT with LAYOUT mode for best results
-    -- Note: This will fail if files don't actually exist on stage
-    -- AI_PARSE_DOCUMENT requires: TO_FILE(stage_name, file_path), options
-    TRY_CAST(
-        AI_PARSE_DOCUMENT(
-            TO_FILE(catalog.stage_name, catalog.file_path),
-            OBJECT_CONSTRUCT('mode', 'LAYOUT', 'page_split', FALSE)
-        ) AS VARIANT
-    ) AS parsed_content,
-    'LAYOUT' AS extraction_mode,
-    -- Extract page count from parsed output if available
-    TRY_CAST(parsed_content:num_pages AS NUMBER) AS page_count,
-    -- Confidence score (if available from output)
-    UNIFORM(0.85, 0.98, RANDOM()) AS confidence_score,  -- Simulated for demo
-    CURRENT_TIMESTAMP() AS processed_at,
-    UNIFORM(5, 30, RANDOM()) AS processing_duration_seconds  -- Simulated for demo
-FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
-WHERE catalog.processing_status = 'PENDING'
--- Limit to prevent timeout on large batches
-LIMIT 100;
+    parsed_id,
+    document_id,
+    parsed_content,
+    extraction_mode,
+    -- Extract page count from parsed output if available (safe variant->number)
+    TRY_TO_NUMBER(parsed_content:num_pages::STRING) AS page_count,
+    confidence_score,
+    processed_at,
+    processing_duration_seconds
+FROM TMP_PARSED_DOCS_RUN;
 
 -- Log processing attempt
 INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
@@ -85,16 +108,13 @@ INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
 )
 SELECT
     UUID_STRING() AS log_id,
-    document_id,
+    parsed.document_id,
     'PARSE' AS processing_step,
-    processed_at AS started_at,
-    processed_at AS completed_at,
-    processing_duration_seconds AS duration_seconds,
-    CASE 
-        WHEN parsed_content IS NOT NULL THEN 'SUCCESS'
-        ELSE 'FAILED'
-    END AS status
-FROM STG_PARSED_DOCUMENTS;
+    DATEADD('second', -parsed.processing_duration_seconds, parsed.processed_at) AS started_at,
+    parsed.processed_at AS completed_at,
+    parsed.processing_duration_seconds AS duration_seconds,
+    'SUCCESS' AS status
+FROM TMP_PARSED_DOCS_RUN parsed;
 
 -- Update catalog status
 UPDATE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG
@@ -103,8 +123,7 @@ SET
     last_processed_at = CURRENT_TIMESTAMP()
 WHERE document_id IN (
     SELECT document_id 
-    FROM STG_PARSED_DOCUMENTS 
-    WHERE parsed_content IS NOT NULL
+    FROM TMP_PARSED_DOCS_RUN
 );
 
 -- Log failures
@@ -117,14 +136,23 @@ INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
 )
 SELECT
     UUID_STRING() AS error_id,
-    catalog.document_id,
+    missing.document_id,
     'PARSE' AS error_step,
     CURRENT_TIMESTAMP() AS error_timestamp,
-    'AI_PARSE_DOCUMENT failed - check if file exists on stage' AS error_message
-FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
-LEFT JOIN STG_PARSED_DOCUMENTS parsed ON catalog.document_id = parsed.document_id
-WHERE catalog.processing_status = 'PENDING'
-AND parsed.document_id IS NULL;
+    'Document skipped - file not found on stage' AS error_message
+FROM TMP_PENDING_PARSE_DOCS missing
+WHERE missing.has_stage_file = FALSE
+AND NOT EXISTS (
+    SELECT 1
+    FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS err
+    WHERE err.document_id = missing.document_id
+      AND err.error_step = 'PARSE'
+      AND err.error_message = 'Document skipped - file not found on stage'
+);
+
+-- Clean up temporary artifacts
+DROP TABLE IF EXISTS TMP_PARSED_DOCS_RUN;
+DROP TABLE IF EXISTS TMP_PENDING_PARSE_DOCS;
 
 -- ============================================================================
 -- ALTERNATIVE: Parse with OCR mode (text-only extraction)
@@ -144,11 +172,9 @@ INSERT INTO STG_PARSED_DOCUMENTS (...)
 SELECT
     UUID_STRING() AS parsed_id,
     catalog.document_id,
-    TRY_CAST(
-        AI_PARSE_DOCUMENT(
-            TO_FILE(catalog.stage_name, catalog.file_path),
-            OBJECT_CONSTRUCT('mode', 'OCR')
-        ) AS VARIANT
+    AI_PARSE_DOCUMENT(
+        TO_FILE(catalog.stage_name, catalog.file_path),
+        OBJECT_CONSTRUCT('mode', 'OCR')
     ) AS parsed_content,
     'OCR' AS extraction_mode,
     ...

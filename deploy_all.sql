@@ -155,6 +155,9 @@ GRANT USAGE ON WAREHOUSE SFE_DOCUMENT_AI_WH TO ROLE SFE_DEMO_ROLE;
 -- Grant database usage (needed for schema access)
 GRANT USAGE ON DATABASE SNOWFLAKE_EXAMPLE TO ROLE SFE_DEMO_ROLE;
 
+-- Grant stage read/write (needed for document uploads)
+GRANT READ, WRITE ON STAGE SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE TO ROLE SFE_DEMO_ROLE;
+
 -- ============================================================================
 -- SECTION 6: SETUP SCRIPTS (from Git Repository)
 -- ============================================================================
@@ -169,8 +172,14 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 -- Execute: Create tables for raw documents
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/02_data/01_create_tables.sql;
 
--- Execute: Load sample documents
+-- Execute: Load sample documents (synthetic text-based data for quick demo)
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/02_data/02_load_sample_data.sql;
+
+-- NOTE: To process REAL PDF documents from pdfs/ folder:
+--   1. Open Streamlit dashboard → "📤 Upload Documents" page (sidebar)
+--   2. Drag and drop PDFs, select document type and language
+--   3. Follow on-screen instructions to complete upload to stage
+--   4. Re-run AI processing scripts to analyze your documents
 
 -- ============================================================================
 -- SECTION 8: AI PROCESSING SCRIPTS (from Git Repository)

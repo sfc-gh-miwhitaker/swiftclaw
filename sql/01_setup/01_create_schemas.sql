@@ -57,6 +57,7 @@ CREATE SCHEMA IF NOT EXISTS SFE_ANALYTICS_ENTERTAINMENT
 -- Create internal stage for document files
 -- AI_PARSE_DOCUMENT requires documents to be on a Snowflake stage
 CREATE STAGE IF NOT EXISTS SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE
+    ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')  -- Server-side encryption
     DIRECTORY = (ENABLE = TRUE)
     COMMENT = 'DEMO: swiftclaw - Internal stage for document files (PDF, DOCX, etc.) | Expires: 2025-12-24 | Author: SE Community';
 
