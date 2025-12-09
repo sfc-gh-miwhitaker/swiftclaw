@@ -54,10 +54,10 @@ SELECT
     catalog.document_id,
     -- Call AI_PARSE_DOCUMENT with LAYOUT mode for best results
     -- Note: This will fail if files don't actually exist on stage
-    -- AI_PARSE_DOCUMENT requires: (full_stage_path, options)
+    -- AI_PARSE_DOCUMENT requires: TO_FILE(stage_name, file_path), options
     TRY_CAST(
         AI_PARSE_DOCUMENT(
-            catalog.stage_path,  -- Full path like '@DOCUMENT_STAGE/invoices/invoice_001.pdf'
+            TO_FILE(catalog.stage_name, catalog.file_path),
             OBJECT_CONSTRUCT('mode', 'LAYOUT', 'page_split', FALSE)
         ) AS VARIANT
     ) AS parsed_content,
