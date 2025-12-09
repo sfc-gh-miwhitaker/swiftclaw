@@ -26,11 +26,11 @@ This demo showcases Snowflake's AI Functions for automating document processing 
 - **Business Intelligence**: Interactive Streamlit dashboard for document insights
 
 **Key Features:**
-- 🤖 **AI_PARSE_DOCUMENT** - Extract text and preserve table layouts from PDFs
-- 🌐 **AI_TRANSLATE** - Context-aware translation for entertainment terms
+- 🤖 **AI_PARSE_DOCUMENT** - Extract text and preserve table layouts from PDFs (GA)
+- 🌐 **AI_TRANSLATE** - Context-aware translation for entertainment terms (GA)
   - 🔬 **Quality Test Included**: Russian names validation (addresses real-world issue with occupation-based surnames)
-- 🔍 **AI_FILTER** - Natural language document classification
-- 📊 **AI_AGG** - Aggregate insights across document collections
+- 🔍 **AI_CLASSIFY** - Natural language document classification into categories (GA)
+- 📊 **AI_COMPLETE** - Generate insights and summaries across document collections (GA)
 - 📱 **Streamlit UI** - Business-user friendly dashboard
 
 ---
@@ -162,7 +162,7 @@ See `diagrams/` for detailed architecture diagrams.
 
 ## Technologies Used
 
-- **Snowflake AI Functions**: AI_PARSE_DOCUMENT, AI_TRANSLATE, AI_FILTER, AI_AGG
+- **Snowflake AI Functions**: AI_PARSE_DOCUMENT, AI_TRANSLATE, AI_CLASSIFY, AI_COMPLETE
 - **Snowflake Streamlit**: Interactive dashboard
 - **Snowflake Git Integration**: GitRepository for code deployment
 - **Standard SQL**: Data transformations and aggregations
@@ -198,40 +198,117 @@ This demo is designed for complete execution within Snowflake with no external d
 
 ### 1. Parse Invoice Document
 ```sql
+-- Production syntax: AI_PARSE_DOCUMENT reads from stage, not binary content
+-- Syntax: AI_PARSE_DOCUMENT('@stage_name', 'path/to/file.pdf', {'mode': 'LAYOUT'})
+-- This demo uses synthetic data, so actual parsing is simulated in SQL scripts
+
 SELECT 
     invoice_id,
-    SNOWFLAKE.CORTEX.PARSE_DOCUMENT(
-        pdf_content, 
-        {'mode': 'LAYOUT'}
-    ) AS parsed_invoice
-FROM SFE_RAW_ENTERTAINMENT.RAW_INVOICES
+    -- For real PDFs on a stage, use:
+    -- AI_PARSE_DOCUMENT('@my_stage', file_path, {'mode': 'LAYOUT'}) AS parsed_invoice
+    parsed_content AS parsed_invoice_simulated
+FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
+WHERE document_source_table = 'RAW_INVOICES'
 LIMIT 5;
 ```
 
 ### 2. Translate Royalty Terms
 ```sql
 SELECT 
-    statement_id,
-    original_language,
-    SNOWFLAKE.CORTEX.TRANSLATE(
-        royalty_text, 
-        original_language, 
+    parsed_id,
+    parsed_content:detected_language::STRING AS original_language,
+    AI_TRANSLATE(
+        parsed_content:extracted_text::STRING, 
+        parsed_content:detected_language::STRING, 
         'en'
     ) AS translated_text
 FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
-WHERE document_type = 'ROYALTY_STATEMENT';
+WHERE document_source_table = 'RAW_ROYALTY_STATEMENTS'
+AND parsed_content:detected_language::STRING <> 'en'
+LIMIT 5;
 ```
 
 ### 3. Classify Documents by Type
+
+**Basic Classification:**
 ```sql
 SELECT 
     document_id,
-    SNOWFLAKE.CORTEX.CLASSIFY(
-        document_content,
+    AI_CLASSIFY(
+        parsed_content:extracted_text::STRING,
         ['Invoice', 'Royalty Statement', 'Contract', 'Other']
-    ) AS document_classification
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS;
+    ):label::STRING AS document_classification,
+    AI_CLASSIFY(
+        parsed_content:extracted_text::STRING,
+        ['Invoice', 'Royalty Statement', 'Contract', 'Other']
+    ):confidence::FLOAT AS classification_confidence
+FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
+LIMIT 10;
 ```
+
+**Enhanced Classification with Category Descriptions:**
+```sql
+-- Using category descriptions for improved accuracy
+SELECT 
+    document_id,
+    AI_CLASSIFY(
+        parsed_content:extracted_text::STRING,
+        [
+            {
+                'category': 'Invoice',
+                'description': 'Billing documents requesting payment with line items and amounts due',
+                'examples': ['Net 30 payment terms', 'remit payment to', 'invoice number']
+            },
+            {
+                'category': 'Royalty Statement',
+                'description': 'Periodic reports showing rights usage, units sold, and royalty payments by territory',
+                'examples': ['territory performance', 'title royalties', 'payment period']
+            },
+            {
+                'category': 'Contract',
+                'description': 'Legal agreements between parties outlining terms, conditions, and obligations',
+                'examples': ['party A and party B', 'effective date', 'confidentiality provisions']
+            },
+            {
+                'category': 'Other',
+                'description': 'Documents that do not fit the above categories'
+            }
+        ]
+    ):label::STRING AS enhanced_classification
+FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
+LIMIT 10;
+```
+
+### 4. Extract Entities with AI_EXTRACT (Enhancement Opportunity)
+
+**Modern Alternative to Regex:**
+```sql
+-- Instead of regex-based extraction, consider AI_EXTRACT for production:
+-- AI_EXTRACT can intelligently extract multiple fields in one pass
+
+-- Example: Extract invoice fields without regex patterns
+SELECT 
+    document_id,
+    AI_EXTRACT(
+        parsed_content:extracted_text::STRING,
+        {
+            'invoice_number': 'The unique identifier for this invoice',
+            'total_amount': 'The total amount due in USD',
+            'vendor_name': 'The name of the company or vendor',
+            'due_date': 'The payment due date',
+            'payment_terms': 'The payment terms (e.g., Net 30)'
+        }
+    ) AS extracted_fields
+FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
+WHERE document_source_table = 'RAW_INVOICES'
+LIMIT 5;
+```
+
+**Benefits over regex:**
+- No pattern maintenance as document formats change
+- Handles format variations automatically
+- Extracts semantic meaning, not just pattern matching
+- Multi-field extraction in single function call
 
 ---
 

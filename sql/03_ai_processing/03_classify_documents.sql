@@ -4,16 +4,37 @@
  * 
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
- * ⚠️  IMPORTANT: AI Function syntax should be verified against current
- *     Snowflake documentation at https://docs.snowflake.com/cortex
+ * ⚠️  IMPORTANT: AI Function syntax verified against Snowflake docs (2025-12-09)
+ *     https://docs.snowflake.com/en/sql-reference/functions/ai_classify
  * 
  * PURPOSE:
- *   Use SNOWFLAKE.CORTEX.CLASSIFY (or similar) to categorize documents by
- *   type, priority level, and business category using natural language.
+ *   Demonstrates document classification workflow by type, priority level,
+ *   and business category.
  * 
- * APPROACH:
- *   For production: SNOWFLAKE.CORTEX.CLASSIFY(text, ['cat1', 'cat2', ...])
- *   For demo: Rule-based classification based on parsed content
+ * PRODUCTION APPROACH:
+ *   For real document classification, use:
+ *   
+ *   SELECT AI_CLASSIFY(
+ *       document_text,
+ *       ['Invoice', 'Royalty Statement', 'Contract', 'Other']
+ *   ):label::STRING AS document_type
+ *   FROM documents;
+ * 
+ *   Enhanced version with category descriptions:
+ *   SELECT AI_CLASSIFY(
+ *       document_text,
+ *       [
+ *           {'category': 'Invoice', 'description': 'Billing document...', 'examples': [...]},
+ *           {'category': 'Contract', 'description': 'Legal agreement...'}
+ *       ]
+ *   ):label::STRING AS document_type
+ *   FROM documents;
+ * 
+ *   Note: AI_CLASSIFY is the modern name (GA)
+ *         CLASSIFY_TEXT (SNOWFLAKE.CORTEX) is legacy but still supported
+ * 
+ * DEMO APPROACH:
+ *   Since we have pre-labeled synthetic data, we use rule-based classification.
  * 
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql

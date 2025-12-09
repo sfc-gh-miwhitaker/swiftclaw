@@ -4,16 +4,28 @@
  * 
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
- * ⚠️  IMPORTANT: AI Function syntax should be verified against current
- *     Snowflake documentation at https://docs.snowflake.com/cortex
+ * ⚠️  IMPORTANT: AI Function syntax verified against Snowflake docs (2025-12-09)
+ *     https://docs.snowflake.com/en/sql-reference/functions/ai_translate
  * 
  * PURPOSE:
- *   Use SNOWFLAKE.CORTEX.TRANSLATE to convert non-English content to English
- *   while preserving entertainment industry context (names, terminology).
+ *   Demonstrates translation workflow while preserving entertainment industry
+ *   context (names, terminology).
  * 
- * APPROACH:
- *   For production: SNOWFLAKE.CORTEX.TRANSLATE(text, source_lang, 'en')
- *   For demo: Simulated translation with context preservation
+ * PRODUCTION APPROACH:
+ *   For real multilingual content, use:
+ *   
+ *   SELECT AI_TRANSLATE(
+ *       text_column,
+ *       'es',  -- Source language code (or '' for auto-detect)
+ *       'en'   -- Target language code
+ *   ) AS translated_text
+ *   FROM multilingual_table;
+ * 
+ *   Note: AI_TRANSLATE is the modern name (GA)
+ *         SNOWFLAKE.CORTEX.TRANSLATE is legacy but still supported
+ * 
+ * DEMO APPROACH:
+ *   Since we have synthetic data, we simulate translation with SQL logic.
  * 
  * QUALITY TEST INCLUDED:
  *   🔬 Russian Names Test - Validates handling of surnames that are also
@@ -58,7 +70,7 @@ SELECT
     parsed_id,
     parsed_content:detected_language::STRING AS source_language,
     'en' AS target_language,
-    -- Simulated translation: In production, use SNOWFLAKE.CORTEX.TRANSLATE()
+    -- Simulated translation: In production, use AI_TRANSLATE(text, source_lang, target_lang)
     -- This demo simulates translation by keeping English text as-is
     -- and providing placeholder translations for Spanish content
     OBJECT_CONSTRUCT(
@@ -115,7 +127,7 @@ SELECT * FROM (VALUES
     ('Оператор Дмитрий Гончар работает на площадке', 'Dmitry Gonchar', 'cinematographer', 'Гончар means Potter but is a surname')
 ) AS t(russian_text, expected_name_preserved, occupation, explanation);
 
--- Run translation test using actual SNOWFLAKE.CORTEX.TRANSLATE
+-- Run translation test using actual AI_TRANSLATE function
 -- NOTE: In a real demo, you would call the actual Cortex function here
 CREATE OR REPLACE TEMPORARY TABLE russian_translation_results AS
 SELECT
@@ -124,7 +136,7 @@ SELECT
     occupation,
     explanation,
     -- For demo: Simulated translation
-    -- In production: SNOWFLAKE.CORTEX.TRANSLATE(russian_text, 'ru', 'en')
+    -- In production: AI_TRANSLATE(russian_text, 'ru', 'en')
     CASE 
         -- Simulate CORRECT behavior (name preserved)
         WHEN CONTAINS(russian_text, 'Пекарь') THEN 'Ivan Pekar works as a director in Moscow'

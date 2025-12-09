@@ -190,8 +190,10 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 -- ============================================================================
 
 -- Create Streamlit app from Git repository
+-- NOTE: Using FROM clause (modern syntax) instead of legacy ROOT_LOCATION
+--       FROM syntax supports multi-file editing and Git integration
 CREATE OR REPLACE STREAMLIT SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUMENT_DASHBOARD
-    ROOT_LOCATION = '@SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/streamlit'
+    FROM '@SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/streamlit'
     MAIN_FILE = 'streamlit_app.py'
     QUERY_WAREHOUSE = SFE_DOCUMENT_AI_WH
     COMMENT = 'DEMO: swiftclaw - Interactive dashboard for document processing | Expires: 2025-12-24 | Author: SE Community';

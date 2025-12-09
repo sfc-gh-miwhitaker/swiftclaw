@@ -4,19 +4,28 @@
  * 
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  * 
- * ⚠️  IMPORTANT: AI Function syntax should be verified against current
- *     Snowflake documentation at https://docs.snowflake.com/cortex
+ * ⚠️  IMPORTANT: AI Function syntax verified against Snowflake docs (2025-12-09)
+ *     https://docs.snowflake.com/en/sql-reference/functions/ai_parse_document
  * 
  * PURPOSE:
- *   Use SNOWFLAKE.CORTEX.PARSE_DOCUMENT (or similar AI function) to extract
- *   structured content from binary PDF documents. This demo uses simulated
- *   parsing since sample data is text-based, not actual PDFs.
+ *   Demonstrates document parsing workflow. This demo uses simulated parsing
+ *   since sample data is text-based, not actual PDFs.
  * 
- * APPROACH:
- *   For production with real PDFs, use:
- *   SELECT SNOWFLAKE.CORTEX.PARSE_DOCUMENT(pdf_content, {'mode': 'LAYOUT'})
+ * PRODUCTION APPROACH:
+ *   For real PDFs on Snowflake stages, use:
+ *   
+ *   SELECT AI_PARSE_DOCUMENT(
+ *       '@my_stage',           -- Stage containing PDFs
+ *       'invoices/inv001.pdf', -- File path
+ *       {'mode': 'LAYOUT'}     -- Options: 'OCR' or 'LAYOUT'
+ *   ) AS parsed_document
+ *   FROM table_with_file_paths;
  * 
- *   For this demo with synthetic data, we'll parse the text content directly.
+ *   Note: AI_PARSE_DOCUMENT is the modern name (GA)
+ *         SNOWFLAKE.CORTEX.PARSE_DOCUMENT is legacy but still supported
+ * 
+ * DEMO APPROACH:
+ *   Since we have synthetic text data, we simulate parsing with SQL logic.
  * 
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
@@ -47,7 +56,7 @@ INSERT INTO STG_PARSED_DOCUMENTS (
 SELECT
     'PARSED_' || UUID_STRING() AS parsed_id,
     document_id,
-    -- Simulated parsing: In production, use SNOWFLAKE.CORTEX.PARSE_DOCUMENT(pdf_content)
+    -- Simulated parsing: In production, use AI_PARSE_DOCUMENT('@stage', path, options)
     OBJECT_CONSTRUCT(
         'extracted_text', TO_VARCHAR(pdf_content),
         'detected_language', original_language,
@@ -95,7 +104,7 @@ INSERT INTO STG_PARSED_DOCUMENTS (
 SELECT
     'PARSED_' || UUID_STRING() AS parsed_id,
     document_id,
-    -- Simulated parsing: In production, use SNOWFLAKE.CORTEX.PARSE_DOCUMENT(pdf_content)
+    -- Simulated parsing: In production, use AI_PARSE_DOCUMENT('@stage', path, options)
     OBJECT_CONSTRUCT(
         'extracted_text', TO_VARCHAR(pdf_content),
         'detected_language', original_language,
@@ -143,7 +152,7 @@ INSERT INTO STG_PARSED_DOCUMENTS (
 SELECT
     'PARSED_' || UUID_STRING() AS parsed_id,
     document_id,
-    -- Simulated parsing: In production, use SNOWFLAKE.CORTEX.PARSE_DOCUMENT(pdf_content)
+    -- Simulated parsing: In production, use AI_PARSE_DOCUMENT('@stage', path, options)
     OBJECT_CONSTRUCT(
         'extracted_text', TO_VARCHAR(pdf_content),
         'detected_language', original_language,
