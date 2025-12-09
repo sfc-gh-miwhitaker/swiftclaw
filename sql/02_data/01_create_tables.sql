@@ -51,9 +51,9 @@ CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG (
     upload_date TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     processing_status STRING DEFAULT 'PENDING',  -- 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'
     last_processed_at TIMESTAMP_NTZ,
-    metadata VARIANT,  -- Additional business metadata
-    COMMENT 'DEMO: swiftclaw - Document catalog with stage paths | Expires: 2025-12-24 | Author: SE Community'
-);
+    metadata VARIANT  -- Additional business metadata
+)
+COMMENT = 'DEMO: swiftclaw - Document catalog with stage paths | Expires: 2025-12-24 | Author: SE Community';
 
 -- Processing Log: Track processing attempts and timing
 CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
@@ -64,9 +64,9 @@ CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
     completed_at TIMESTAMP_NTZ,
     duration_seconds NUMBER,
     status STRING,  -- 'SUCCESS', 'FAILED'
-    error_message STRING,
-    COMMENT 'DEMO: swiftclaw - Processing audit log | Expires: 2025-12-24 | Author: SE Community'
-);
+    error_message STRING
+)
+COMMENT = 'DEMO: swiftclaw - Processing audit log | Expires: 2025-12-24 | Author: SE Community';
 
 -- Error Tracking: Detailed error information
 CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
@@ -77,9 +77,9 @@ CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
     error_code STRING,
     error_message STRING,
     error_details VARIANT,
-    retry_count NUMBER DEFAULT 0,
-    COMMENT 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2025-12-24 | Author: SE Community'
-);
+    retry_count NUMBER DEFAULT 0
+)
+COMMENT = 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2025-12-24 | Author: SE Community';
 
 SELECT 'Raw layer tables created: 3 tables' AS status;
 
@@ -96,9 +96,9 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS (
     page_count NUMBER,
     confidence_score FLOAT,
     processed_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    processing_duration_seconds NUMBER,
-    COMMENT 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2025-12-24 | Author: SE Community'
-);
+    processing_duration_seconds NUMBER
+)
+COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2025-12-24 | Author: SE Community';
 
 -- Translated Content Table (AI_TRANSLATE results)
 CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT (
@@ -109,9 +109,9 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT (
     source_text STRING,
     translated_text STRING NOT NULL,
     translation_confidence FLOAT,
-    translated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    COMMENT 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2025-12-24 | Author: SE Community'
-);
+    translated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2025-12-24 | Author: SE Community';
 
 -- Classified Documents Table (AI_CLASSIFY results)
 CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_CLASSIFIED_DOCS (
@@ -122,9 +122,9 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_CLASSIFIED_DOCS (
     business_category STRING,
     classification_confidence FLOAT,
     classification_details VARIANT,  -- Full AI_CLASSIFY response
-    classified_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    COMMENT 'DEMO: swiftclaw - AI_CLASSIFY results | Expires: 2025-12-24 | Author: SE Community'
-);
+    classified_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'DEMO: swiftclaw - AI_CLASSIFY results | Expires: 2025-12-24 | Author: SE Community';
 
 -- Extracted Entities Table (AI_EXTRACT results)
 CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_EXTRACTED_ENTITIES (
@@ -133,9 +133,9 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_EXTRACTED_ENTITIES (
     entity_type STRING NOT NULL,  -- 'invoice_number', 'amount', 'vendor', etc.
     entity_value STRING NOT NULL,
     extraction_confidence FLOAT,
-    extracted_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    COMMENT 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2025-12-24 | Author: SE Community'
-);
+    extracted_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2025-12-24 | Author: SE Community';
 
 SELECT 'Staging layer tables created: 4 transient tables' AS status;
 
@@ -157,9 +157,9 @@ CREATE OR REPLACE TABLE SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS (
     requires_manual_review BOOLEAN DEFAULT FALSE,
     manual_review_reason STRING,
     insight_created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    metadata VARIANT,
-    COMMENT 'DEMO: swiftclaw - Aggregated document insights | Expires: 2025-12-24 | Author: SE Community'
-);
+    metadata VARIANT
+)
+COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2025-12-24 | Author: SE Community';
 
 -- ============================================================================
 -- VERIFICATION
