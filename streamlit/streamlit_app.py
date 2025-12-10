@@ -111,7 +111,7 @@ if not monitoring_df.empty:
         st.metric(
             "Documents Processed",
             f"{int(row['INSIGHT_DOCUMENTS']):,}",
-            delta=f"of {int(row['RAW_DOCUMENTS']):,} raw"
+            delta=f"of {int(row['CATALOG_DOCUMENTS']):,} cataloged"
         )
 
     with col3:
