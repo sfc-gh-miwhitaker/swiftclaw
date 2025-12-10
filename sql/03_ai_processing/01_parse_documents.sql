@@ -36,27 +36,26 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- ============================================================================
 
 -- Process all documents in PENDING status using AI_PARSE_DOCUMENT
--- Note: This will attempt to parse documents from the stage
--- If no actual files are uploaded yet, this will log errors
+-- Documents are hosted on GitHub via external stage (GITHUB_SAMPLE_DOCS)
+-- or uploaded by users to internal stage (DOCUMENT_STAGE)
 
--- Build a targeted queue of pending documents and verify stage files exist
+-- Build a targeted queue of pending documents
+-- Note: External stages don't support DIRECTORY(), so we trust the catalog
 CREATE OR REPLACE TEMPORARY TABLE TMP_PENDING_PARSE_DOCS AS
-WITH stage_inventory AS (
-    SELECT relative_path
-    FROM DIRECTORY(@SWIFTCLAW.DOCUMENT_STAGE)
-)
 SELECT
     catalog.document_id,
     catalog.stage_name,
-    catalog.file_path,
-    stage_inventory.relative_path IS NOT NULL AS has_stage_file
+    catalog.file_path
 FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog
-LEFT JOIN stage_inventory
-    ON stage_inventory.relative_path = catalog.file_path
 WHERE catalog.processing_status = 'PENDING'
-QUALIFY ROW_NUMBER() OVER (ORDER BY catalog.document_id) <= 100;
+AND catalog.file_format = 'PDF'  -- Only process PDFs
+QUALIFY ROW_NUMBER() OVER (ORDER BY catalog.document_id) <= 50;  -- Batch size for demo
 
--- Pre-compute AI_PARSE_DOCUMENT results so downstream steps share the same dataset
+-- Show documents to be processed
+SELECT COUNT(*) || ' documents queued for AI parsing' AS status FROM TMP_PENDING_PARSE_DOCS;
+
+-- Pre-compute AI_PARSE_DOCUMENT results
+-- TO_FILE() works with both internal and external stages
 CREATE OR REPLACE TEMPORARY TABLE TMP_PARSED_DOCS_RUN AS
 SELECT
     UUID_STRING() AS parsed_id,
@@ -71,8 +70,7 @@ SELECT
     CURRENT_TIMESTAMP() AS processed_at,
     UNIFORM(0.85, 0.98, RANDOM()) AS confidence_score,
     UNIFORM(5, 30, RANDOM()) AS processing_duration_seconds
-FROM TMP_PENDING_PARSE_DOCS
-WHERE has_stage_file = TRUE;
+FROM TMP_PENDING_PARSE_DOCS;
 
 INSERT INTO SWIFTCLAW.STG_PARSED_DOCUMENTS (
     parsed_id,
@@ -126,7 +124,7 @@ WHERE document_id IN (
     FROM TMP_PARSED_DOCS_RUN
 );
 
--- Log failures
+-- Log any documents that weren't successfully parsed
 INSERT INTO SWIFTCLAW.RAW_DOCUMENT_ERRORS (
     error_id,
     document_id,
@@ -136,18 +134,21 @@ INSERT INTO SWIFTCLAW.RAW_DOCUMENT_ERRORS (
 )
 SELECT
     UUID_STRING() AS error_id,
-    missing.document_id,
+    pending.document_id,
     'PARSE' AS error_step,
     CURRENT_TIMESTAMP() AS error_timestamp,
-    'Document skipped - file not found on stage' AS error_message
-FROM TMP_PENDING_PARSE_DOCS missing
-WHERE missing.has_stage_file = FALSE
+    'Document queued but not parsed - check stage accessibility' AS error_message
+FROM TMP_PENDING_PARSE_DOCS pending
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM TMP_PARSED_DOCS_RUN parsed
+    WHERE parsed.document_id = pending.document_id
+)
 AND NOT EXISTS (
     SELECT 1
     FROM SWIFTCLAW.RAW_DOCUMENT_ERRORS err
-    WHERE err.document_id = missing.document_id
+    WHERE err.document_id = pending.document_id
       AND err.error_step = 'PARSE'
-      AND err.error_message = 'Document skipped - file not found on stage'
 );
 
 -- Clean up temporary artifacts

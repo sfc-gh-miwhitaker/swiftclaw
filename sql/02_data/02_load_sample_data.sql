@@ -1,25 +1,21 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
- * Script: Load Sample Data
+ * Script: Load Sample Data - References Real PDFs from GitHub
  *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  *
  * PURPOSE:
- *   Generate realistic sample documents and upload metadata to catalog.
- *   Documents are created as text files to demonstrate AI Functions workflow.
+ *   Catalog real PDF documents hosted on GitHub for AI processing.
+ *   Documents are accessed via external stage pointing to GitHub raw content.
  *
- * APPROACH:
- *   1. Generate sample document content as text
- *   2. PUT files to internal stage (via SQL)
- *   3. Catalog document metadata
+ * DOCUMENTS CATALOGED:
+ *   From pdfs/generated/ (18 documents):
+ *   - 6 Invoices (en, es, de, pt)
+ *   - 6 Royalty Statements (en, es, de, pt)
+ *   - 6 Contracts (en, es, de, pt)
  *
- * NOTE: For production demos with real PDFs, use PUT command or Snowsight UI:
- *   PUT file:///*.pdf @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;
- *
- * DATA GENERATED:
- *   - 10 sample invoices (mixed English/Spanish)
- *   - 5 sample royalty statements (multi-territory)
- *   - 5 sample contracts
+ *   From pdfs/ root (6 documents):
+ *   - 6 Bridge documents (en, es, de, pt, ru, zh) - Translation demo
  *
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
@@ -35,56 +31,7 @@ USE SCHEMA SWIFTCLAW;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
--- SAMPLE DOCUMENT GENERATION: Invoices
--- ============================================================================
-
--- Generate 10 sample invoices with realistic content
-INSERT INTO RAW_DOCUMENT_CATALOG (
-    document_id,
-    document_type,
-    stage_name,
-    file_path,
-    file_name,
-    file_format,
-    file_size_bytes,
-    original_language,
-    processing_status,
-    metadata
-)
-SELECT
-    'INV_' || LPAD(seq, 6, '0') AS document_id,
-    'INVOICE' AS document_type,
-    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
-    'invoices/invoice_' || LPAD(seq, 6, '0') || '.txt' AS file_path,
-    'invoice_' || LPAD(seq, 6, '0') || '.txt' AS file_name,
-    'TXT' AS file_format,  -- Using TXT for demo; production would use PDF
-    UNIFORM(2048, 8192, rnd) AS file_size_bytes,
-    CASE WHEN seq <= 8 THEN 'en' ELSE 'es' END AS original_language,
-    'PENDING' AS processing_status,
-    OBJECT_CONSTRUCT(
-        'vendor_name', ARRAY_CONSTRUCT('Acme Production Services', 'Global Studios Inc', 'MediaTech Solutions', 'Film Finance Co', 'Post House LLC')[UNIFORM(0, 4, RANDOM())],
-        'invoice_number', 'INV-2024-' || LPAD(seq, 6, '0'),
-        'invoice_date', DATEADD(day, -UNIFORM(0, 180, rnd), CURRENT_DATE()),
-        'amount', UNIFORM(5000, 150000, rnd),
-        'currency', 'USD',
-        'payment_terms', 'Net 30',
-        'generated_for_demo', TRUE
-    ) AS metadata
-FROM (
-    SELECT
-        SEQ4() AS seq,
-        RANDOM() AS rnd
-    FROM TABLE(GENERATOR(ROWCOUNT => 10))
-) invoice_gen;
-
--- Create sample invoice content files
--- NOTE: In production, you would PUT actual PDF files here
--- For demo purposes, we'll create the metadata and let AI functions work with stage paths
-
-SELECT '10 invoice documents cataloged' AS status;
-
--- ============================================================================
--- SAMPLE DOCUMENT GENERATION: Royalty Statements
+-- CATALOG GENERATED INVOICES (6 documents)
 -- ============================================================================
 
 INSERT INTO RAW_DOCUMENT_CATALOG (
@@ -99,36 +46,28 @@ INSERT INTO RAW_DOCUMENT_CATALOG (
     processing_status,
     metadata
 )
-SELECT
-    'ROY_' || LPAD(seq, 6, '0') AS document_id,
-    'ROYALTY_STATEMENT' AS document_type,
-    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
-    'royalty/royalty_' || LPAD(seq, 6, '0') || '.txt' AS file_path,
-    'royalty_' || LPAD(seq, 6, '0') || '.txt' AS file_name,
-    'TXT' AS file_format,
-    UNIFORM(4096, 16384, rnd) AS file_size_bytes,
-    'en' AS original_language,
-    'PENDING' AS processing_status,
-    OBJECT_CONSTRUCT(
-        'territory', ARRAY_CONSTRUCT('North America', 'Europe', 'Asia Pacific', 'Latin America', 'United Kingdom')[UNIFORM(0, 4, rnd)],
-        'period_start', CASE WHEN seq <= 3 THEN '2024-07-01'::DATE ELSE '2024-10-01'::DATE END,
-        'period_end', CASE WHEN seq <= 3 THEN '2024-09-30'::DATE ELSE '2024-12-31'::DATE END,
-        'total_royalties', UNIFORM(25000, 500000, rnd),
-        'title_count', UNIFORM(50, 500, rnd),
-        'currency', 'USD',
-        'generated_for_demo', TRUE
-    ) AS metadata
-FROM (
-    SELECT
-        SEQ4() AS seq,
-        RANDOM() AS rnd
-    FROM TABLE(GENERATOR(ROWCOUNT => 5))
-) royalty_gen;
+VALUES
+    -- English Invoices
+    ('INV_EN_001', 'INVOICE', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/invoice_en_001.pdf', 'invoice_en_001.pdf', 'PDF', 4500, 'en', 'PENDING',
+     PARSE_JSON('{"vendor_name": "Acme Production Services", "invoice_number": "INV-2024-0001", "currency": "USD", "generated_for_demo": true}')),
+    ('INV_EN_002', 'INVOICE', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/invoice_en_002.pdf', 'invoice_en_002.pdf', 'PDF', 4600, 'en', 'PENDING',
+     PARSE_JSON('{"vendor_name": "Acme Production Services", "invoice_number": "INV-2024-0002", "currency": "USD", "generated_for_demo": true}')),
+    -- Spanish Invoices
+    ('INV_ES_003', 'INVOICE', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/invoice_es_003.pdf', 'invoice_es_003.pdf', 'PDF', 4700, 'es', 'PENDING',
+     PARSE_JSON('{"vendor_name": "Servicios de Produccion Acme", "invoice_number": "INV-2024-0003", "currency": "USD", "generated_for_demo": true}')),
+    ('INV_ES_004', 'INVOICE', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/invoice_es_004.pdf', 'invoice_es_004.pdf', 'PDF', 4800, 'es', 'PENDING',
+     PARSE_JSON('{"vendor_name": "Servicios de Produccion Acme", "invoice_number": "INV-2024-0004", "currency": "USD", "generated_for_demo": true}')),
+    -- German Invoice
+    ('INV_DE_005', 'INVOICE', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/invoice_de_005.pdf', 'invoice_de_005.pdf', 'PDF', 4900, 'de', 'PENDING',
+     PARSE_JSON('{"vendor_name": "Acme Produktionsdienstleistungen", "invoice_number": "INV-2024-0005", "currency": "USD", "generated_for_demo": true}')),
+    -- Portuguese Invoice
+    ('INV_PT_006', 'INVOICE', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/invoice_pt_006.pdf', 'invoice_pt_006.pdf', 'PDF', 5000, 'pt', 'PENDING',
+     PARSE_JSON('{"vendor_name": "Servicos de Producao Acme", "invoice_number": "INV-2024-0006", "currency": "USD", "generated_for_demo": true}'));
 
-SELECT '5 royalty statement documents cataloged' AS status;
+SELECT '6 invoice documents cataloged from GitHub' AS status;
 
 -- ============================================================================
--- SAMPLE DOCUMENT GENERATION: Contracts
+-- CATALOG GENERATED ROYALTY STATEMENTS (6 documents)
 -- ============================================================================
 
 INSERT INTO RAW_DOCUMENT_CATALOG (
@@ -143,73 +82,94 @@ INSERT INTO RAW_DOCUMENT_CATALOG (
     processing_status,
     metadata
 )
-SELECT
-    'CON_' || LPAD(seq, 6, '0') AS document_id,
-    'CONTRACT' AS document_type,
-    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
-    'contracts/contract_' || LPAD(seq, 6, '0') || '.txt' AS file_path,
-    'contract_' || LPAD(seq, 6, '0') || '.txt' AS file_name,
-    'TXT' AS file_format,
-    UNIFORM(8192, 32768, rnd) AS file_size_bytes,
-    'en' AS original_language,
-    'PENDING' AS processing_status,
-    OBJECT_CONSTRUCT(
-        'contract_type', ARRAY_CONSTRUCT('Production Agreement', 'Distribution License', 'Talent Agreement', 'Music Licensing', 'Merchandising Rights')[UNIFORM(0, 4, rnd)],
-        'effective_date', DATEADD(month, -UNIFORM(0, 36, rnd), CURRENT_DATE()),
-        'party_b', ARRAY_CONSTRUCT('Acme Studios', 'Star Talent Agency', 'Distribution Partners LLC', 'Music Rights Corp', 'Global Licensing Inc')[UNIFORM(0, 4, rnd)],
-        'contract_value', UNIFORM(50000, 5000000, rnd),
-        'term_years', UNIFORM(1, 5, rnd),
-        'territory', ARRAY_CONSTRUCT('Worldwide', 'North America', 'Europe', 'Asia', 'Latin America')[UNIFORM(0, 4, rnd)],
-        'generated_for_demo', TRUE
-    ) AS metadata
-FROM (
-    SELECT
-        SEQ4() AS seq,
-        RANDOM() AS rnd
-    FROM TABLE(GENERATOR(ROWCOUNT => 5))
-) contract_gen;
+VALUES
+    -- English Royalty Statements
+    ('ROY_EN_001', 'ROYALTY_STATEMENT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/royalty_en_001.pdf', 'royalty_en_001.pdf', 'PDF', 5500, 'en', 'PENDING',
+     PARSE_JSON('{"territory": "North America", "period": "Q3 2024", "currency": "USD", "generated_for_demo": true}')),
+    ('ROY_EN_002', 'ROYALTY_STATEMENT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/royalty_en_002.pdf', 'royalty_en_002.pdf', 'PDF', 5600, 'en', 'PENDING',
+     PARSE_JSON('{"territory": "Europe", "period": "Q3 2024", "currency": "USD", "generated_for_demo": true}')),
+    -- Spanish Royalty Statements
+    ('ROY_ES_003', 'ROYALTY_STATEMENT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/royalty_es_003.pdf', 'royalty_es_003.pdf', 'PDF', 5700, 'es', 'PENDING',
+     PARSE_JSON('{"territory": "America Latina", "period": "Q3 2024", "currency": "USD", "generated_for_demo": true}')),
+    ('ROY_ES_004', 'ROYALTY_STATEMENT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/royalty_es_004.pdf', 'royalty_es_004.pdf', 'PDF', 5800, 'es', 'PENDING',
+     PARSE_JSON('{"territory": "Europa", "period": "Q4 2024", "currency": "USD", "generated_for_demo": true}')),
+    -- German Royalty Statement
+    ('ROY_DE_005', 'ROYALTY_STATEMENT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/royalty_de_005.pdf', 'royalty_de_005.pdf', 'PDF', 5900, 'de', 'PENDING',
+     PARSE_JSON('{"territory": "Europa", "period": "Q3 2024", "currency": "USD", "generated_for_demo": true}')),
+    -- Portuguese Royalty Statement
+    ('ROY_PT_006', 'ROYALTY_STATEMENT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/royalty_pt_006.pdf', 'royalty_pt_006.pdf', 'PDF', 6000, 'pt', 'PENDING',
+     PARSE_JSON('{"territory": "America do Sul", "period": "Q4 2024", "currency": "USD", "generated_for_demo": true}'));
 
-SELECT '5 contract documents cataloged' AS status;
+SELECT '6 royalty statement documents cataloged from GitHub' AS status;
 
 -- ============================================================================
--- CREATE SAMPLE DOCUMENT CONTENT FILES
+-- CATALOG GENERATED CONTRACTS (6 documents)
 -- ============================================================================
 
--- For this demo, we'll create inline sample content
--- In production, you would upload real PDF/DOCX files to the stage
-
--- Sample Invoice Content Template
-CREATE OR REPLACE TEMPORARY TABLE sample_invoice_content AS
-SELECT
+INSERT INTO RAW_DOCUMENT_CATALOG (
     document_id,
-    metadata:invoice_number::STRING AS invoice_number,
-    metadata:vendor_name::STRING AS vendor_name,
-    metadata:invoice_date::DATE AS invoice_date,
-    metadata:amount::NUMBER AS amount,
-    -- Generate realistic invoice text
-    'INVOICE\n\n' ||
-    'Vendor: ' || metadata:vendor_name::STRING || '\n' ||
-    'Invoice Number: ' || metadata:invoice_number::STRING || '\n' ||
-    'Date: ' || metadata:invoice_date::STRING || '\n' ||
-    'Amount Due: $' || metadata:amount::STRING || ' USD\n' ||
-    'Payment Terms: Net 30\n\n' ||
-    'LINE ITEMS:\n' ||
-    '1. Production Services - $' || (metadata:amount::NUMBER * 0.60)::STRING || '\n' ||
-    '2. Post-Production - $' || (metadata:amount::NUMBER * 0.30)::STRING || '\n' ||
-    '3. Miscellaneous Fees - $' || (metadata:amount::NUMBER * 0.10)::STRING || '\n\n' ||
-    'TOTAL: $' || metadata:amount::STRING || ' USD\n\n' ||
-    'Please remit payment to:\n' ||
-    'Global Media Corp\n' ||
-    'Account: 1234567890\n' ||
-    'Due Date: ' || DATEADD(day, 30, metadata:invoice_date::DATE)::STRING AS document_content
-FROM RAW_DOCUMENT_CATALOG
-WHERE document_type = 'INVOICE';
+    document_type,
+    stage_name,
+    file_path,
+    file_name,
+    file_format,
+    file_size_bytes,
+    original_language,
+    processing_status,
+    metadata
+)
+VALUES
+    -- English Contracts
+    ('CON_EN_001', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/contract_en_001.pdf', 'contract_en_001.pdf', 'PDF', 7500, 'en', 'PENDING',
+     PARSE_JSON('{"contract_type": "Licensing Agreement", "territory": "Worldwide", "currency": "USD", "generated_for_demo": true}')),
+    ('CON_EN_002', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/contract_en_002.pdf', 'contract_en_002.pdf', 'PDF', 7600, 'en', 'PENDING',
+     PARSE_JSON('{"contract_type": "Distribution License", "territory": "North America", "currency": "USD", "generated_for_demo": true}')),
+    -- Spanish Contracts
+    ('CON_ES_003', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/contract_es_003.pdf', 'contract_es_003.pdf', 'PDF', 7700, 'es', 'PENDING',
+     PARSE_JSON('{"contract_type": "Acuerdo de Licencia", "territory": "America Latina", "currency": "USD", "generated_for_demo": true}')),
+    ('CON_ES_004', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/contract_es_004.pdf', 'contract_es_004.pdf', 'PDF', 7800, 'es', 'PENDING',
+     PARSE_JSON('{"contract_type": "Licencia de Distribucion", "territory": "Europa", "currency": "USD", "generated_for_demo": true}')),
+    -- German Contract
+    ('CON_DE_005', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/contract_de_005.pdf', 'contract_de_005.pdf', 'PDF', 7900, 'de', 'PENDING',
+     PARSE_JSON('{"contract_type": "Lizenzvereinbarung", "territory": "Europa", "currency": "USD", "generated_for_demo": true}')),
+    -- Portuguese Contract
+    ('CON_PT_006', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'generated/contract_pt_006.pdf', 'contract_pt_006.pdf', 'PDF', 8000, 'pt', 'PENDING',
+     PARSE_JSON('{"contract_type": "Contrato de Licenciamento", "territory": "America do Sul", "currency": "USD", "generated_for_demo": true}'));
 
--- Note: In a real implementation, you would PUT these files to the stage:
--- PUT 'file://path/to/invoice.pdf' @DOCUMENT_STAGE/invoices/ AUTO_COMPRESS=FALSE;
+SELECT '6 contract documents cataloged from GitHub' AS status;
 
--- For this demo, the document content is available in the temp table
--- AI functions will be called with stage paths once files are uploaded
+-- ============================================================================
+-- CATALOG BRIDGE TRANSLATION DEMO DOCUMENTS (6 documents)
+-- ============================================================================
+
+INSERT INTO RAW_DOCUMENT_CATALOG (
+    document_id,
+    document_type,
+    stage_name,
+    file_path,
+    file_name,
+    file_format,
+    file_size_bytes,
+    original_language,
+    processing_status,
+    metadata
+)
+VALUES
+    -- Bridge documents - same content in 6 languages for translation demo
+    ('BRIDGE_EN', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'bridge_en.pdf', 'bridge_en.pdf', 'PDF', 15000, 'en', 'PENDING',
+     PARSE_JSON('{"document_set": "bridge_translation_demo", "purpose": "Translation baseline (English)", "generated_for_demo": true}')),
+    ('BRIDGE_ES', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'bridge_es.pdf', 'bridge_es.pdf', 'PDF', 15500, 'es', 'PENDING',
+     PARSE_JSON('{"document_set": "bridge_translation_demo", "purpose": "Spanish translation demo", "generated_for_demo": true}')),
+    ('BRIDGE_DE', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'bridge_de.pdf', 'bridge_de.pdf', 'PDF', 15200, 'de', 'PENDING',
+     PARSE_JSON('{"document_set": "bridge_translation_demo", "purpose": "German translation demo", "generated_for_demo": true}')),
+    ('BRIDGE_PT', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'bridge_pt.pdf', 'bridge_pt.pdf', 'PDF', 15300, 'pt', 'PENDING',
+     PARSE_JSON('{"document_set": "bridge_translation_demo", "purpose": "Portuguese translation demo", "generated_for_demo": true}')),
+    ('BRIDGE_RU', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'bridge_ru.pdf', 'bridge_ru.pdf', 'PDF', 16000, 'ru', 'PENDING',
+     PARSE_JSON('{"document_set": "bridge_translation_demo", "purpose": "Russian translation demo", "generated_for_demo": true}')),
+    ('BRIDGE_ZH', 'CONTRACT', '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS', 'bridge_zh.pdf', 'bridge_zh.pdf', 'PDF', 14000, 'zh', 'PENDING',
+     PARSE_JSON('{"document_set": "bridge_translation_demo", "purpose": "Chinese translation demo", "generated_for_demo": true}'));
+
+SELECT '6 bridge translation demo documents cataloged from GitHub' AS status;
 
 -- ============================================================================
 -- VERIFICATION
@@ -218,58 +178,17 @@ WHERE document_type = 'INVOICE';
 -- Check catalog summary
 SELECT
     document_type,
+    original_language,
     COUNT(*) AS document_count,
-    COUNT(DISTINCT original_language) AS language_count,
-    AVG(file_size_bytes) AS avg_file_size_bytes,
     processing_status
 FROM RAW_DOCUMENT_CATALOG
-GROUP BY document_type, processing_status
-ORDER BY document_type;
+GROUP BY document_type, original_language, processing_status
+ORDER BY document_type, original_language;
 
--- Sample document details
-SELECT
-    document_id,
-    document_type,
-    file_name,
-    original_language,
-    processing_status,
-    metadata:vendor_name::STRING AS vendor_or_party,
-    metadata:amount::NUMBER AS amount
-FROM RAW_DOCUMENT_CATALOG
-LIMIT 10;
+-- Total documents cataloged
+SELECT COUNT(*) || ' total documents cataloged and ready for AI processing' AS final_status
+FROM RAW_DOCUMENT_CATALOG;
 
-SELECT 'Sample data loading complete - 20 documents cataloged' AS final_status;
-
--- ============================================================================
--- INSTRUCTIONS FOR REAL PDF UPLOAD
--- ============================================================================
-
-/*
-TO USE WITH REAL PDF DOCUMENTS:
-
-1. Prepare your PDF files locally in this structure:
-   documents/
-     invoices/
-       invoice_001.pdf
-       invoice_002.pdf
-     royalty/
-       royalty_001.pdf
-     contracts/
-       contract_001.pdf
-
-2. Upload to Snowflake stage using SnowSQL:
-   PUT file://documents/invoices/*.pdf @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/invoices/ AUTO_COMPRESS=FALSE;
-   PUT file://documents/royalty/*.pdf @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/royalty/ AUTO_COMPRESS=FALSE;
-   PUT file://documents/contracts/*.pdf @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/contracts/ AUTO_COMPRESS=FALSE;
-
-3. Verify upload:
-   LS @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE;
-
-4. Update catalog with real file paths:
-   UPDATE RAW_DOCUMENT_CATALOG
-   SET file_format = 'PDF',
-       file_path = 'invoices/' || file_name
-   WHERE document_type = 'INVOICE';
-
-5. Proceed to AI processing scripts to parse documents
-*/
+-- Verify external stage accessibility
+SELECT 'Verifying GitHub stage accessibility...' AS status;
+LS @SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS/generated/ PATTERN = '.*\.pdf';
