@@ -174,20 +174,32 @@ CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW
 CREATE STAGE IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE
     ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
     DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'DEMO: swiftclaw - Internal stage for user-uploaded documents | Expires: 2026-01-09 | Author: SE Community';
-
--- Create external stage pointing to GitHub raw content (sample PDFs)
--- This allows AI functions to process sample docs without any file uploads
-CREATE OR REPLACE STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS
-    URL = 'https://raw.githubusercontent.com/sfc-gh-miwhitaker/swiftclaw/main/pdfs/'
-    COMMENT = 'DEMO: swiftclaw - External stage for sample PDFs from GitHub | Expires: 2026-01-09 | Author: SE Community';
-
--- Verify external stage can list files
-LS @SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS/generated/;
+    COMMENT = 'DEMO: swiftclaw - Internal stage for document files | Expires: 2026-01-09 | Author: SE Community';
 
 -- Grant stage read/write (now guaranteed to exist)
 GRANT READ, WRITE ON STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE TO ROLE SFE_DEMO_ROLE;
-GRANT READ ON STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.GITHUB_SAMPLE_DOCS TO ROLE SFE_DEMO_ROLE;
+
+-- ============================================================================
+-- SECTION 6b: COPY SAMPLE PDFs FROM GIT REPO TO INTERNAL STAGE
+-- ============================================================================
+-- COPY FILES transfers PDFs from Git repository to internal stage
+-- This enables AI_PARSE_DOCUMENT to process real documents automatically
+
+-- Copy generated sample documents (invoices, royalties, contracts)
+COPY FILES
+    INTO @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/generated/
+    FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/pdfs/generated/
+    PATTERN = '.*\.pdf';
+
+-- Copy bridge translation demo documents
+COPY FILES
+    INTO @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/
+    FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/pdfs/
+    PATTERN = 'bridge_.*\.pdf';
+
+-- Verify files copied successfully
+SELECT 'Sample PDFs copied from Git repository to internal stage' AS status;
+LS @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/ PATTERN = '.*\.pdf';
 
 -- ============================================================================
 -- SECTION 7: DATA SCRIPTS (from Git Repository)

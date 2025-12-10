@@ -36,8 +36,8 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- ============================================================================
 
 -- Process all documents in PENDING status using AI_PARSE_DOCUMENT
--- Documents are hosted on GitHub via external stage (GITHUB_SAMPLE_DOCS)
--- or uploaded by users to internal stage (DOCUMENT_STAGE)
+-- Sample documents are copied from Git repo to DOCUMENT_STAGE during deployment
+-- Users can also upload additional documents via Streamlit
 
 -- Build a targeted queue of pending documents
 -- Note: External stages don't support DIRECTORY(), so we trust the catalog
