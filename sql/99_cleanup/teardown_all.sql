@@ -1,22 +1,22 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Complete Teardown
- * 
+ *
  * ⚠️  THIS WILL DELETE ALL DEMO OBJECTS - USE WITH CAUTION
- * 
+ *
  * PURPOSE:
  *   Remove all objects created by this demo, including:
- *   - All SFE_* schemas and their contents
+ *   - Project schema: SWIFTCLAW (tables, view, stage, Streamlit)
  *   - Git repository stage
  *   - Dedicated warehouse
  *   - API integration
  *   - Demo role
- * 
+ *
  * PROTECTED OBJECTS (NOT DELETED):
  *   - SNOWFLAKE_EXAMPLE database (may contain other demos)
  *   - SNOWFLAKE_EXAMPLE.GIT_REPOS schema (shared across demos)
  *   - Shared API integrations (if used by other demos)
- * 
+ *
  * 🗑️  DESIGNED FOR "RUN ALL" EXECUTION:
  *   1. Copy this ENTIRE script (Ctrl+A or Cmd+A to select all)
  *   2. Open Snowsight → https://app.snowflake.com
@@ -26,12 +26,12 @@
  *   6. Click "Run All" button (▶️ dropdown → "Run All")
  *   7. All demo objects will be deleted immediately
  *   8. No undo available - objects are permanently removed
- * 
+ *
  * OR run from command line:
  *   snowsql -f sql/99_cleanup/teardown_all.sql
- * 
+ *
  * Author: SE Community
- * Created: 2025-11-24 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
  ******************************************************************************/
 
 -- Switch to ACCOUNTADMIN for cleanup
@@ -43,7 +43,7 @@ USE ROLE ACCOUNTADMIN;
 -- Run these queries BEFORE cleanup to see what will be removed:
 
 -- Check current schemas
--- SHOW SCHEMAS LIKE 'SFE_%' IN DATABASE SNOWFLAKE_EXAMPLE;
+-- SHOW SCHEMAS LIKE 'SWIFTCLAW' IN DATABASE SNOWFLAKE_EXAMPLE;
 
 -- Check if API integration is used by other demos
 -- SHOW GIT REPOSITORIES; -- If multiple repos use SFE_GIT_API_INTEGRATION, consider keeping it
@@ -57,8 +57,8 @@ USE ROLE ACCOUNTADMIN;
 --
 -- When you click "Run All", these objects will be IMMEDIATELY deleted:
 --   - Streamlit app: SFE_DOCUMENT_DASHBOARD
---   - 3 schemas: SFE_RAW_ENTERTAINMENT, SFE_STG_ENTERTAINMENT, SFE_ANALYTICS_ENTERTAINMENT
---   - 7 tables + 1 view across all schemas
+--   - Schema: SWIFTCLAW (tables + view + stage)
+--   - 8 tables + 1 view across the schema
 --   - Warehouse: SFE_DOCUMENT_AI_WH
 --   - Git repository: sfe_swiftclaw_repo
 --   - API Integration: SFE_GIT_API_INTEGRATION
@@ -90,7 +90,7 @@ USE ROLE ACCOUNTADMIN;
 -- STEP 1: DROP STREAMLIT APP
 -- ============================================================================
 
-DROP STREAMLIT IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUMENT_DASHBOARD;
+DROP STREAMLIT IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD;
 
 -- Streamlit app has been dropped
 
@@ -98,7 +98,7 @@ DROP STREAMLIT IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUM
 -- STEP 2: DROP VIEWS
 -- ============================================================================
 
-DROP VIEW IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_METRICS;
+DROP VIEW IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.V_PROCESSING_METRICS;
 
 -- View has been dropped
 
@@ -106,20 +106,16 @@ DROP VIEW IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_M
 -- STEP 3: DROP TABLES (in dependency order)
 -- ============================================================================
 
--- Analytics layer
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.FCT_DOCUMENT_INSIGHTS;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_EXTRACTED_ENTITIES;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_CLASSIFIED_DOCS;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_TRANSLATED_CONTENT;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_PARSED_DOCUMENTS;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_ERRORS;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG;
+DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_CATALOG;
 
--- Staging layer
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT.STG_CLASSIFIED_DOCS;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS;
-
--- Raw layer
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_CONTRACTS;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_ROYALTY_STATEMENTS;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_INVOICES;
-
--- All tables have been dropped (7 total)
+-- All tables have been dropped (8 total)
 
 -- ============================================================================
 -- STEP 4: DROP SCHEMAS
@@ -128,11 +124,9 @@ DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.RAW_INVOICES;
 --       cleaned up all contained objects in previous steps. This provides
 --       a safety check - if a schema drop fails, we know objects remain.
 
-DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT;
-DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT;
-DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT;
+DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW CASCADE;
 
--- All schemas have been dropped (3 total)
+-- Project schema has been dropped
 
 -- ============================================================================
 -- STEP 5: DROP GIT REPOSITORY
@@ -180,8 +174,8 @@ DROP ROLE IF EXISTS SFE_DEMO_ROLE;
 -- Verify all demo objects are gone
 -- Note: These should return empty result sets if cleanup was successful
 
--- Check for remaining SFE_* schemas
-SHOW SCHEMAS LIKE 'SFE_%' IN DATABASE SNOWFLAKE_EXAMPLE;
+-- Check for remaining project schema
+SHOW SCHEMAS LIKE 'SWIFTCLAW' IN DATABASE SNOWFLAKE_EXAMPLE;
 
 -- Check for remaining SFE_* warehouses
 SHOW WAREHOUSES LIKE 'SFE_%';
@@ -201,8 +195,8 @@ SHOW GIT REPOSITORIES IN SCHEMA SNOWFLAKE_EXAMPLE.GIT_REPOS;
 --
 -- Removed Objects:
 --   ✓ Streamlit app: SFE_DOCUMENT_DASHBOARD
---   ✓ 3 schemas: SFE_RAW_ENTERTAINMENT, SFE_STG_ENTERTAINMENT, SFE_ANALYTICS_ENTERTAINMENT
---   ✓ 7 tables + 1 view
+--   ✓ Schema: SWIFTCLAW (tables, view, stage)
+--   ✓ 8 tables + 1 view
 --   ✓ Warehouse: SFE_DOCUMENT_AI_WH
 --   ✓ Git repository: sfe_swiftclaw_repo
 --   ✓ API Integration: SFE_GIT_API_INTEGRATION (if not shared)
@@ -214,6 +208,5 @@ SHOW GIT REPOSITORIES IN SCHEMA SNOWFLAKE_EXAMPLE.GIT_REPOS;
 --
 -- Verification Commands:
 --   Run the SHOW commands above to confirm cleanup
---   All should return 0 results for SFE_* objects
+--   All should return 0 results for project objects
 -- ============================================================================
-

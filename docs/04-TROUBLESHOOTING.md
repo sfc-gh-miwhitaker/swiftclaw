@@ -1,8 +1,8 @@
 # Troubleshooting Guide - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24
+**Author:** SE Community
+**Last Updated:** 2025-11-24
+**Expires:** 2026-01-09
 
 ---
 
@@ -83,7 +83,7 @@ ALTER WAREHOUSE SFE_DOCUMENT_AI_WH RESUME;
 
 **Increase auto-suspend timeout (for long deployments):**
 ```sql
-ALTER WAREHOUSE SFE_DOCUMENT_AI_WH 
+ALTER WAREHOUSE SFE_DOCUMENT_AI_WH
 SET AUTO_SUSPEND = 600;  -- 10 minutes
 ```
 
@@ -123,9 +123,9 @@ CREATE OR REPLACE STREAMLIT SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUMENT_DASHBOARD
 
 **Check Streamlit logs for errors:**
 ```sql
-SELECT * 
+SELECT *
 FROM TABLE(INFORMATION_SCHEMA.STREAMLIT_LOGS('SFE_DOCUMENT_DASHBOARD'))
-ORDER BY TIMESTAMP DESC 
+ORDER BY TIMESTAMP DESC
 LIMIT 100;
 ```
 
@@ -243,7 +243,7 @@ ALTER WAREHOUSE SFE_DOCUMENT_AI_WH RESUME;
 
 **Upsize warehouse (if needed for large datasets):**
 ```sql
-ALTER WAREHOUSE SFE_DOCUMENT_AI_WH 
+ALTER WAREHOUSE SFE_DOCUMENT_AI_WH
 SET WAREHOUSE_SIZE = 'SMALL';  -- Or 'MEDIUM'
 ```
 
@@ -253,7 +253,7 @@ SET WAREHOUSE_SIZE = 'SMALL';  -- Or 'MEDIUM'
 SELECT * FROM FCT_DOCUMENT_INSIGHTS;
 
 -- Use:
-SELECT * FROM FCT_DOCUMENT_INSIGHTS 
+SELECT * FROM FCT_DOCUMENT_INSIGHTS
 WHERE document_type = 'Invoice'
 LIMIT 1000;
 ```
@@ -307,8 +307,8 @@ SHOW SCHEMAS IN DATABASE SNOWFLAKE_EXAMPLE LIKE 'SFE_%';
 -- Expected: 3 schemas
 
 -- Verify tables exist
-SELECT table_schema, table_name 
-FROM SNOWFLAKE_EXAMPLE.INFORMATION_SCHEMA.TABLES 
+SELECT table_schema, table_name
+FROM SNOWFLAKE_EXAMPLE.INFORMATION_SCHEMA.TABLES
 WHERE table_schema LIKE 'SFE_%';
 -- Expected: 7 tables
 
@@ -328,7 +328,7 @@ SHOW WAREHOUSES LIKE 'SFE_DOCUMENT_AI_WH';
 SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_METRICS;
 
 -- Check for errors in processing
-SELECT 
+SELECT
     document_id,
     confidence_score,
     requires_manual_review
@@ -364,10 +364,9 @@ WHERE confidence_score < 0.80;
 
 ---
 
-**Still stuck?**  
+**Still stuck?**
 Contact your Snowflake account team or check the [GitHub repository issues](https://github.com/sfc-gh-miwhitaker/swiftclaw/issues).
 
 ---
 
-**Demo Expires:** 2025-12-24
-
+**Demo Expires:** 2026-01-09

@@ -1,37 +1,37 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Load Sample Data
- * 
+ *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
- * 
+ *
  * PURPOSE:
  *   Generate realistic sample documents and upload metadata to catalog.
  *   Documents are created as text files to demonstrate AI Functions workflow.
- * 
+ *
  * APPROACH:
  *   1. Generate sample document content as text
  *   2. PUT files to internal stage (via SQL)
  *   3. Catalog document metadata
- * 
+ *
  * NOTE: For production demos with real PDFs, use PUT command or Snowsight UI:
  *   PUT file:///*.pdf @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;
- * 
+ *
  * DATA GENERATED:
  *   - 10 sample invoices (mixed English/Spanish)
  *   - 5 sample royalty statements (multi-territory)
  *   - 5 sample contracts
- * 
+ *
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
- * 
+ *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
  ******************************************************************************/
 
 -- Set context
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
-USE SCHEMA SFE_RAW_ENTERTAINMENT;
+USE SCHEMA SWIFTCLAW;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
@@ -39,7 +39,13 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- ============================================================================
 
 -- Generate 10 sample invoices with realistic content
-INSERT INTO DOCUMENT_CATALOG (
+WITH invoice_gen AS (
+    SELECT
+        SEQ4() AS seq,
+        RANDOM() AS rnd
+    FROM TABLE(GENERATOR(ROWCOUNT => 10))
+)
+INSERT INTO RAW_DOCUMENT_CATALOG (
     document_id,
     document_type,
     stage_name,
@@ -52,25 +58,25 @@ INSERT INTO DOCUMENT_CATALOG (
     metadata
 )
 SELECT
-    'INV_' || LPAD(SEQ4(), 6, '0') AS document_id,
+    'INV_' || LPAD(seq, 6, '0') AS document_id,
     'INVOICE' AS document_type,
-    '@DOCUMENT_STAGE' AS stage_name,
-    'invoices/invoice_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_path,
-    'invoice_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
+    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
+    'invoices/invoice_' || LPAD(seq, 6, '0') || '.txt' AS file_path,
+    'invoice_' || LPAD(seq, 6, '0') || '.txt' AS file_name,
     'TXT' AS file_format,  -- Using TXT for demo; production would use PDF
-    UNIFORM(2048, 8192, RANDOM()) AS file_size_bytes,
-    CASE WHEN SEQ4() <= 8 THEN 'en' ELSE 'es' END AS original_language,
+    UNIFORM(2048, 8192, rnd) AS file_size_bytes,
+    CASE WHEN seq <= 8 THEN 'en' ELSE 'es' END AS original_language,
     'PENDING' AS processing_status,
     OBJECT_CONSTRUCT(
         'vendor_name', ARRAY_CONSTRUCT('Acme Production Services', 'Global Studios Inc', 'MediaTech Solutions', 'Film Finance Co', 'Post House LLC')[UNIFORM(0, 4, RANDOM())],
-        'invoice_number', 'INV-2024-' || LPAD(SEQ4(), 6, '0'),
-        'invoice_date', DATEADD(day, -UNIFORM(0, 180, RANDOM()), CURRENT_DATE()),
-        'amount', UNIFORM(5000, 150000, RANDOM()),
+        'invoice_number', 'INV-2024-' || LPAD(seq, 6, '0'),
+        'invoice_date', DATEADD(day, -UNIFORM(0, 180, rnd), CURRENT_DATE()),
+        'amount', UNIFORM(5000, 150000, rnd),
         'currency', 'USD',
         'payment_terms', 'Net 30',
         'generated_for_demo', TRUE
     ) AS metadata
-FROM TABLE(GENERATOR(ROWCOUNT => 10));
+FROM invoice_gen;
 
 -- Create sample invoice content files
 -- NOTE: In production, you would PUT actual PDF files here
@@ -82,7 +88,13 @@ SELECT '10 invoice documents cataloged' AS status;
 -- SAMPLE DOCUMENT GENERATION: Royalty Statements
 -- ============================================================================
 
-INSERT INTO DOCUMENT_CATALOG (
+WITH royalty_gen AS (
+    SELECT
+        SEQ4() AS seq,
+        RANDOM() AS rnd
+    FROM TABLE(GENERATOR(ROWCOUNT => 5))
+)
+INSERT INTO RAW_DOCUMENT_CATALOG (
     document_id,
     document_type,
     stage_name,
@@ -95,25 +107,25 @@ INSERT INTO DOCUMENT_CATALOG (
     metadata
 )
 SELECT
-    'ROY_' || LPAD(SEQ4(), 6, '0') AS document_id,
+    'ROY_' || LPAD(seq, 6, '0') AS document_id,
     'ROYALTY_STATEMENT' AS document_type,
-    '@DOCUMENT_STAGE' AS stage_name,
-    'royalty/royalty_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_path,
-    'royalty_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
+    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
+    'royalty/royalty_' || LPAD(seq, 6, '0') || '.txt' AS file_path,
+    'royalty_' || LPAD(seq, 6, '0') || '.txt' AS file_name,
     'TXT' AS file_format,
-    UNIFORM(4096, 16384, RANDOM()) AS file_size_bytes,
+    UNIFORM(4096, 16384, rnd) AS file_size_bytes,
     'en' AS original_language,
     'PENDING' AS processing_status,
     OBJECT_CONSTRUCT(
-        'territory', ARRAY_CONSTRUCT('North America', 'Europe', 'Asia Pacific', 'Latin America', 'United Kingdom')[UNIFORM(0, 4, RANDOM())],
-        'period_start', CASE WHEN SEQ4() <= 3 THEN '2024-07-01'::DATE ELSE '2024-10-01'::DATE END,
-        'period_end', CASE WHEN SEQ4() <= 3 THEN '2024-09-30'::DATE ELSE '2024-12-31'::DATE END,
-        'total_royalties', UNIFORM(25000, 500000, RANDOM()),
-        'title_count', UNIFORM(50, 500, RANDOM()),
+        'territory', ARRAY_CONSTRUCT('North America', 'Europe', 'Asia Pacific', 'Latin America', 'United Kingdom')[UNIFORM(0, 4, rnd)],
+        'period_start', CASE WHEN seq <= 3 THEN '2024-07-01'::DATE ELSE '2024-10-01'::DATE END,
+        'period_end', CASE WHEN seq <= 3 THEN '2024-09-30'::DATE ELSE '2024-12-31'::DATE END,
+        'total_royalties', UNIFORM(25000, 500000, rnd),
+        'title_count', UNIFORM(50, 500, rnd),
         'currency', 'USD',
         'generated_for_demo', TRUE
     ) AS metadata
-FROM TABLE(GENERATOR(ROWCOUNT => 5));
+FROM royalty_gen;
 
 SELECT '5 royalty statement documents cataloged' AS status;
 
@@ -121,7 +133,13 @@ SELECT '5 royalty statement documents cataloged' AS status;
 -- SAMPLE DOCUMENT GENERATION: Contracts
 -- ============================================================================
 
-INSERT INTO DOCUMENT_CATALOG (
+WITH contract_gen AS (
+    SELECT
+        SEQ4() AS seq,
+        RANDOM() AS rnd
+    FROM TABLE(GENERATOR(ROWCOUNT => 5))
+)
+INSERT INTO RAW_DOCUMENT_CATALOG (
     document_id,
     document_type,
     stage_name,
@@ -134,25 +152,25 @@ INSERT INTO DOCUMENT_CATALOG (
     metadata
 )
 SELECT
-    'CON_' || LPAD(SEQ4(), 6, '0') AS document_id,
+    'CON_' || LPAD(seq, 6, '0') AS document_id,
     'CONTRACT' AS document_type,
-    '@DOCUMENT_STAGE' AS stage_name,
-    'contracts/contract_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_path,
-    'contract_' || LPAD(SEQ4(), 6, '0') || '.txt' AS file_name,
+    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
+    'contracts/contract_' || LPAD(seq, 6, '0') || '.txt' AS file_path,
+    'contract_' || LPAD(seq, 6, '0') || '.txt' AS file_name,
     'TXT' AS file_format,
-    UNIFORM(8192, 32768, RANDOM()) AS file_size_bytes,
+    UNIFORM(8192, 32768, rnd) AS file_size_bytes,
     'en' AS original_language,
     'PENDING' AS processing_status,
     OBJECT_CONSTRUCT(
-        'contract_type', ARRAY_CONSTRUCT('Production Agreement', 'Distribution License', 'Talent Agreement', 'Music Licensing', 'Merchandising Rights')[UNIFORM(0, 4, RANDOM())],
-        'effective_date', DATEADD(month, -UNIFORM(0, 36, RANDOM()), CURRENT_DATE()),
-        'party_b', ARRAY_CONSTRUCT('Acme Studios', 'Star Talent Agency', 'Distribution Partners LLC', 'Music Rights Corp', 'Global Licensing Inc')[UNIFORM(0, 4, RANDOM())],
-        'contract_value', UNIFORM(50000, 5000000, RANDOM()),
-        'term_years', UNIFORM(1, 5, RANDOM()),
-        'territory', ARRAY_CONSTRUCT('Worldwide', 'North America', 'Europe', 'Asia', 'Latin America')[UNIFORM(0, 4, RANDOM())],
+        'contract_type', ARRAY_CONSTRUCT('Production Agreement', 'Distribution License', 'Talent Agreement', 'Music Licensing', 'Merchandising Rights')[UNIFORM(0, 4, rnd)],
+        'effective_date', DATEADD(month, -UNIFORM(0, 36, rnd), CURRENT_DATE()),
+        'party_b', ARRAY_CONSTRUCT('Acme Studios', 'Star Talent Agency', 'Distribution Partners LLC', 'Music Rights Corp', 'Global Licensing Inc')[UNIFORM(0, 4, rnd)],
+        'contract_value', UNIFORM(50000, 5000000, rnd),
+        'term_years', UNIFORM(1, 5, rnd),
+        'territory', ARRAY_CONSTRUCT('Worldwide', 'North America', 'Europe', 'Asia', 'Latin America')[UNIFORM(0, 4, rnd)],
         'generated_for_demo', TRUE
     ) AS metadata
-FROM TABLE(GENERATOR(ROWCOUNT => 5));
+FROM contract_gen;
 
 SELECT '5 contract documents cataloged' AS status;
 
@@ -187,7 +205,7 @@ SELECT
     'Global Media Corp\n' ||
     'Account: 1234567890\n' ||
     'Due Date: ' || DATEADD(day, 30, metadata:invoice_date::DATE)::STRING AS document_content
-FROM DOCUMENT_CATALOG
+FROM RAW_DOCUMENT_CATALOG
 WHERE document_type = 'INVOICE';
 
 -- Note: In a real implementation, you would PUT these files to the stage:
@@ -201,18 +219,18 @@ WHERE document_type = 'INVOICE';
 -- ============================================================================
 
 -- Check catalog summary
-SELECT 
+SELECT
     document_type,
     COUNT(*) AS document_count,
     COUNT(DISTINCT original_language) AS language_count,
     AVG(file_size_bytes) AS avg_file_size_bytes,
     processing_status
-FROM DOCUMENT_CATALOG
+FROM RAW_DOCUMENT_CATALOG
 GROUP BY document_type, processing_status
 ORDER BY document_type;
 
 -- Sample document details
-SELECT 
+SELECT
     document_id,
     document_type,
     file_name,
@@ -220,7 +238,7 @@ SELECT
     processing_status,
     metadata:vendor_name::STRING AS vendor_or_party,
     metadata:amount::NUMBER AS amount
-FROM DOCUMENT_CATALOG
+FROM RAW_DOCUMENT_CATALOG
 LIMIT 10;
 
 SELECT 'Sample data loading complete - 20 documents cataloged' AS final_status;
@@ -251,7 +269,7 @@ TO USE WITH REAL PDF DOCUMENTS:
    LS @SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE;
 
 4. Update catalog with real file paths:
-   UPDATE DOCUMENT_CATALOG
+   UPDATE RAW_DOCUMENT_CATALOG
    SET file_format = 'PDF',
        file_path = 'invoices/' || file_name
    WHERE document_type = 'INVOICE';

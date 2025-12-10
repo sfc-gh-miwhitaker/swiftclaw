@@ -1,12 +1,12 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
- * 
+ *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
- * 
- * DEMONSTRATION PROJECT - EXPIRES: 2025-12-24
+ *
+ * DEMONSTRATION PROJECT - EXPIRES: 2026-01-09
  * This demo uses Snowflake AI Functions validated as of December 2025.
  * After expiration, this repository will be archived.
- * 
+ *
  * 🚀 DESIGNED FOR "RUN ALL" EXECUTION:
  *   1. Copy this ENTIRE script (Ctrl+A or Cmd+A to select all)
  *   2. Open Snowsight → https://app.snowflake.com
@@ -15,7 +15,7 @@
  *   5. Click "Run All" button (▶️ dropdown → "Run All")
  *   6. Wait ~10 minutes - script executes all steps automatically
  *   7. No manual intervention required - fully automated deployment
- * 
+ *
  * WHAT THIS SCRIPT DOES:
  *   - Creates API integration for GitHub repository access
  *   - Creates Git repository stage with demo SQL scripts
@@ -23,31 +23,31 @@
  *   - Creates internal stage for document files (PDF, DOCX, etc.)
  *   - Executes setup, data, and REAL AI processing scripts from Git
  *   - Deploys Streamlit dashboard for document processing UI
- * 
+ *
  * AI FUNCTIONS USED (All GA/Production-Ready):
  *   - AI_PARSE_DOCUMENT: Extract text and layout from documents
  *   - AI_TRANSLATE: Translate multilingual content
  *   - AI_CLASSIFY: Categorize documents with enhanced descriptions
  *   - AI_EXTRACT: Extract entities without regex patterns
- * 
+ *
  * REQUIREMENTS:
  *   - ACCOUNTADMIN role (for API integration creation)
  *   - Internet access (to pull from GitHub)
  *   - ~10 minutes of execution time
- * 
+ *
  * ESTIMATED COST:
  *   - One-time: ~1.5 credits (~$3 on Standard edition)
  *   - Monthly: < 0.5 credits if left running (~$1/month)
- * 
+ *
  * CLEANUP:
  *   - Run sql/99_cleanup/teardown_all.sql to remove all objects
  *   - Or: DROP DATABASE SNOWFLAKE_EXAMPLE CASCADE;
  *   - Or: DROP WAREHOUSE SFE_DOCUMENT_AI_WH;
  *   - Or: DROP API INTEGRATION SFE_GIT_API_INTEGRATION;
- * 
+ *
  * GitHub Repository: https://github.com/sfc-gh-miwhitaker/swiftclaw
  * Author: SE Community
- * Created: 2025-11-24 | Expires: 2025-12-24 (30 days)
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09 (30 days)
  ******************************************************************************/
 
 -- ============================================================================
@@ -56,19 +56,19 @@
 
 -- CRITICAL: Check if demo has expired (30 days from creation)
 -- This will display a warning/error message but allow execution to continue
-SELECT 
-    CASE 
-        WHEN CURRENT_DATE() > '2025-12-24'::DATE THEN
-            '❌ ERROR: This demo expired on 2025-12-24. ' ||
+SELECT
+    CASE
+        WHEN CURRENT_DATE() > '2026-01-09'::DATE THEN
+            '❌ ERROR: This demo expired on 2026-01-09. ' ||
             'Demo projects are maintained for 30 days only. ' ||
             'Contact your Snowflake account team for updated versions.'
-        WHEN DATEDIFF('day', CURRENT_DATE(), '2025-12-24'::DATE) <= 7 THEN
-            '⚠️  WARNING: This demo expires in ' || 
-            DATEDIFF('day', CURRENT_DATE(), '2025-12-24'::DATE) || 
-            ' days (2025-12-24). Plan accordingly.'
+        WHEN DATEDIFF('day', CURRENT_DATE(), '2026-01-09'::DATE) <= 7 THEN
+            '⚠️  WARNING: This demo expires in ' ||
+            DATEDIFF('day', CURRENT_DATE(), '2026-01-09'::DATE) ||
+            ' days (2026-01-09). Plan accordingly.'
         ELSE
-            '✅ Demo is active. Expires: 2025-12-24 (' || 
-            DATEDIFF('day', CURRENT_DATE(), '2025-12-24'::DATE) || 
+            '✅ Demo is active. Expires: 2026-01-09 (' ||
+            DATEDIFF('day', CURRENT_DATE(), '2026-01-09'::DATE) ||
             ' days remaining)'
     END AS EXPIRATION_STATUS;
 
@@ -90,7 +90,7 @@ CREATE OR REPLACE API INTEGRATION SFE_GIT_API_INTEGRATION
     API_PROVIDER = GIT_HTTPS_API
     API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-miwhitaker/')
     ENABLED = TRUE
-    COMMENT = 'DEMO: swiftclaw - Git integration for AI document processing demo | Expires: 2025-12-24 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Git integration for AI document processing demo | Expires: 2026-01-09 | Author: SE Community';
 
 -- Verify API integration created successfully
 SHOW API INTEGRATIONS LIKE 'SFE_GIT%';
@@ -111,7 +111,7 @@ CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.GIT_REPOS
 CREATE OR REPLACE GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo
     API_INTEGRATION = SFE_GIT_API_INTEGRATION
     ORIGIN = 'https://github.com/sfc-gh-miwhitaker/swiftclaw'
-    COMMENT = 'DEMO: swiftclaw - AI Document Processing demo repository | Expires: 2025-12-24 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - AI Document Processing demo repository | Expires: 2026-01-09 | Author: SE Community';
 
 -- Fetch latest code from GitHub
 ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo FETCH;
@@ -132,7 +132,7 @@ CREATE WAREHOUSE IF NOT EXISTS SFE_DOCUMENT_AI_WH WITH
     MAX_CLUSTER_COUNT = 1                -- No multi-cluster (demo only)
     MIN_CLUSTER_COUNT = 1
     SCALING_POLICY = 'STANDARD'
-    COMMENT = 'DEMO: swiftclaw - Dedicated warehouse for AI document processing | Expires: 2025-12-24 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Dedicated warehouse for AI document processing | Expires: 2026-01-09 | Author: SE Community';
 
 -- Set warehouse context for subsequent operations
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
@@ -155,8 +155,8 @@ GRANT USAGE ON WAREHOUSE SFE_DOCUMENT_AI_WH TO ROLE SFE_DEMO_ROLE;
 -- Grant database usage (needed for schema access)
 GRANT USAGE ON DATABASE SNOWFLAKE_EXAMPLE TO ROLE SFE_DEMO_ROLE;
 
--- Grant stage read/write (needed for document uploads)
-GRANT READ, WRITE ON STAGE SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE TO ROLE SFE_DEMO_ROLE;
+-- Set database context for stage grant
+USE DATABASE SNOWFLAKE_EXAMPLE;
 
 -- ============================================================================
 -- SECTION 6: SETUP SCRIPTS (from Git Repository)
@@ -164,6 +164,20 @@ GRANT READ, WRITE ON STAGE SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE TO ROLE SFE_DEMO
 
 -- Execute: Create schemas for raw, staging, analytics layers
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/01_setup/01_create_schemas.sql;
+
+-- Idempotent guard: Ensure schema and stage exist before granting
+-- (handles re-runs where prior cleanup dropped these objects)
+CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW
+    DATA_RETENTION_TIME_IN_DAYS = 7
+    COMMENT = 'DEMO: swiftclaw - Project schema (raw/staging/analytics layers) | Expires: 2026-01-09 | Author: SE Community';
+
+CREATE STAGE IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE
+    ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
+    DIRECTORY = (ENABLE = TRUE)
+    COMMENT = 'DEMO: swiftclaw - Internal stage for document files | Expires: 2026-01-09 | Author: SE Community';
+
+-- Grant stage read/write (now guaranteed to exist)
+GRANT READ, WRITE ON STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE TO ROLE SFE_DEMO_ROLE;
 
 -- ============================================================================
 -- SECTION 7: DATA SCRIPTS (from Git Repository)
@@ -212,34 +226,31 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 -- Create Streamlit app from Git repository
 -- NOTE: Using FROM clause (modern syntax) instead of legacy ROOT_LOCATION
 --       FROM syntax supports multi-file editing and Git integration
-CREATE OR REPLACE STREAMLIT SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUMENT_DASHBOARD
+CREATE OR REPLACE STREAMLIT SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD
     FROM '@SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/streamlit'
     MAIN_FILE = 'streamlit_app.py'
     QUERY_WAREHOUSE = SFE_DOCUMENT_AI_WH
-    COMMENT = 'DEMO: swiftclaw - Interactive dashboard for document processing | Expires: 2025-12-24 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Interactive dashboard for document processing | Expires: 2026-01-09 | Author: SE Community';
 
 -- Verify Streamlit app created successfully
-SHOW STREAMLITS IN SCHEMA SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT;
+SHOW STREAMLITS IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW;
 
 -- ============================================================================
 -- SECTION 10: FINALIZE ROLE PERMISSIONS
 -- ============================================================================
 
--- Grant schema usage (schemas created by setup scripts)
-GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
-GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
-GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
+-- Grant schema usage (single project schema)
+GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
 
 -- Grant table access
-GRANT SELECT ON ALL TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
-GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
-GRANT SELECT ON ALL TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
+GRANT SELECT ON ALL TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
+GRANT INSERT, UPDATE ON ALL TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
 
 -- Grant view access
-GRANT SELECT ON ALL VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT TO ROLE SFE_DEMO_ROLE;
+GRANT SELECT ON ALL VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
 
 -- Grant Streamlit usage
-GRANT USAGE ON STREAMLIT SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT.SFE_DOCUMENT_DASHBOARD TO ROLE SFE_DEMO_ROLE;
+GRANT USAGE ON STREAMLIT SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD TO ROLE SFE_DEMO_ROLE;
 
 -- Grant role to SYSADMIN (for easier management)
 GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
@@ -266,7 +277,7 @@ SELECT '  - Warehouse: SFE_DOCUMENT_AI_WH (XSMALL)' AS message
 UNION ALL
 SELECT '  - Git Repository: sfe_swiftclaw_repo' AS message
 UNION ALL
-SELECT '  - Schemas: SFE_RAW_ENTERTAINMENT, SFE_STG_ENTERTAINMENT, SFE_ANALYTICS_ENTERTAINMENT' AS message
+SELECT '  - Schema: SWIFTCLAW (raw/staging/analytics tables)' AS message
 UNION ALL
 SELECT '  - Stage: DOCUMENT_STAGE (for file uploads)' AS message
 UNION ALL
@@ -282,17 +293,17 @@ SELECT '' AS message
 UNION ALL
 SELECT 'Next Steps:' AS message
 UNION ALL
-SELECT '  1. Upload documents (optional): PUT file:///*.pdf @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;' AS message
+SELECT '  1. Upload documents (optional): PUT file:///*.pdf @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;' AS message
 UNION ALL
 SELECT '  2. Switch role: USE ROLE SFE_DEMO_ROLE;' AS message
 UNION ALL
 SELECT '  3. Open Streamlit: Home → Streamlit → SFE_DOCUMENT_DASHBOARD' AS message
 UNION ALL
-SELECT '  4. View insights: SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS LIMIT 10;' AS message
+SELECT '  4. View insights: SELECT * FROM SWIFTCLAW.FCT_DOCUMENT_INSIGHTS LIMIT 10;' AS message
 UNION ALL
-SELECT '  5. View metrics: SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_METRICS;' AS message
+SELECT '  5. View metrics: SELECT * FROM SWIFTCLAW.V_PROCESSING_METRICS;' AS message
 UNION ALL
-SELECT '  6. Check document catalog: SELECT * FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG;' AS message
+SELECT '  6. Check document catalog: SELECT * FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG;' AS message
 UNION ALL
 SELECT '' AS message
 UNION ALL
@@ -310,11 +321,11 @@ SELECT 'Cleanup (when finished):' AS message
 UNION ALL
 SELECT '  - Run: @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/99_cleanup/teardown_all.sql' AS message
 UNION ALL
-SELECT '  - Or manual: DROP DATABASE SNOWFLAKE_EXAMPLE CASCADE; DROP WAREHOUSE SFE_DOCUMENT_AI_WH;' AS message
+SELECT '  - Or manual: DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW CASCADE; DROP WAREHOUSE IF EXISTS SFE_DOCUMENT_AI_WH;' AS message
 UNION ALL
 SELECT '' AS message
 UNION ALL
-SELECT 'Demo Expires: 2025-12-24 (30 days from creation)' AS message
+SELECT 'Demo Expires: 2026-01-09 (30 days from creation)' AS message
 UNION ALL
 SELECT '========================================' AS message;
 
@@ -327,7 +338,7 @@ Common Issues and Solutions:
 
 1. ERROR: "API_INTEGRATION not found"
    - CAUSE: API integration failed to create
-   - FIX: Run: SHOW API INTEGRATIONS LIKE 'SFE_GIT%'; 
+   - FIX: Run: SHOW API INTEGRATIONS LIKE 'SFE_GIT%';
           Verify integration exists and ENABLED = TRUE
 
 2. ERROR: "Git repository not accessible"
@@ -363,4 +374,3 @@ For additional help:
 
 GitHub Repository: https://github.com/sfc-gh-miwhitaker/swiftclaw
 */
-

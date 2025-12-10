@@ -2,16 +2,16 @@
 
 ![Reference Implementation](https://img.shields.io/badge/Reference-Implementation-blue)
 ![Ready to Run](https://img.shields.io/badge/Ready%20to%20Run-Yes-green)
-![Expires](https://img.shields.io/badge/Expires-2025--12--24-orange)
+![Expires](https://img.shields.io/badge/Expires-2026--01--09-orange)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
-> **DEMONSTRATION PROJECT - EXPIRES: 2025-12-24**  
-> This demo uses Snowflake AI Functions current as of November 2024.  
+> **DEMONSTRATION PROJECT - EXPIRES: 2026-01-09**
+> This demo uses Snowflake AI Functions current as of November 2024.
 > After expiration, this repository will be archived and made private.
 
-**Author:** SE Community  
-**Purpose:** Reference implementation for AI-powered document processing in media & entertainment  
-**Created:** 2025-11-24 | **Expires:** 2025-12-24 (30 days) | **Status:** ACTIVE
+**Author:** SE Community
+**Purpose:** Reference implementation for AI-powered document processing in media & entertainment
+**Created:** 2025-11-24 | **Expires:** 2026-01-09 (30 days) | **Status:** ACTIVE
 
 ---
 
@@ -85,10 +85,10 @@ Follow these steps in order to deploy and explore the demo:
 
 ## Use Case
 
-**Business Challenge:**  
+**Business Challenge:**
 Global Media Corp (fictional entertainment company) processes thousands of invoices, royalty statements, and contracts monthly. Manual processing is time-consuming, error-prone, and doesn't scale.
 
-**Solution:**  
+**Solution:**
 Leverage Snowflake AI Functions to:
 - Automatically extract key data from documents
 - Translate multilingual content accurately
@@ -110,40 +110,36 @@ Leverage Snowflake AI Functions to:
 ```
 1. UPLOAD
    Documents (PDF/DOCX) → @DOCUMENT_STAGE (Snowflake Internal Stage)
-   
+
 2. CATALOG
    Document metadata → DOCUMENT_CATALOG (tracks processing status)
-   
+
 3. AI PROCESSING (All Real Snowflake AI Functions)
    ├─ AI_PARSE_DOCUMENT → Extract text + layout (OCR or LAYOUT mode)
    ├─ AI_TRANSLATE → Translate non-English content (20+ languages)
    ├─ AI_CLASSIFY → Categorize by type/priority (enhanced descriptions)
    └─ AI_EXTRACT → Extract entities (no regex required!)
-   
+
 4. AGGREGATION
    SQL joins → FCT_DOCUMENT_INSIGHTS (business metrics)
-   
+
 5. MONITORING
    V_PROCESSING_METRICS → Real-time pipeline health
-   
+
 6. VISUALIZATION
    Streamlit Dashboard → Interactive UI for business users
 ```
 
 ### Database Architecture
 
-**RAW LAYER** (`SFE_RAW_ENTERTAINMENT`):
-- `DOCUMENT_CATALOG` - Document metadata and stage paths
-- `DOCUMENT_PROCESSING_LOG` - Audit trail for all AI operations
-- `DOCUMENT_ERRORS` - Error tracking and retry management
-
-**STAGING LAYER** (`SFE_STG_ENTERTAINMENT`):
+**Project Schema** (`SWIFTCLAW`):
+- `RAW_DOCUMENT_CATALOG` - Document metadata and stage paths
+- `RAW_DOCUMENT_PROCESSING_LOG` - Audit trail for AI operations
+- `RAW_DOCUMENT_ERRORS` - Error tracking and retry management
 - `STG_PARSED_DOCUMENTS` - AI_PARSE_DOCUMENT results
 - `STG_TRANSLATED_CONTENT` - AI_TRANSLATE results
 - `STG_CLASSIFIED_DOCS` - AI_CLASSIFY results
 - `STG_EXTRACTED_ENTITIES` - AI_EXTRACT results
-
-**ANALYTICS LAYER** (`SFE_ANALYTICS_ENTERTAINMENT`):
 - `FCT_DOCUMENT_INSIGHTS` - Aggregated business insights
 - `V_PROCESSING_METRICS` - Real-time monitoring view
 
@@ -162,18 +158,17 @@ See `diagrams/` for detailed architecture diagrams.
 ### Database Objects (in SNOWFLAKE_EXAMPLE)
 | Object Type | Schema | Name | Purpose |
 |-------------|--------|------|---------|
-| Schema | - | `SFE_RAW_ENTERTAINMENT` | Raw document storage |
-| Schema | - | `SFE_STG_ENTERTAINMENT` | Parsed content |
-| Schema | - | `SFE_ANALYTICS_ENTERTAINMENT` | Business insights |
-| Table | `SFE_RAW_ENTERTAINMENT` | `RAW_INVOICES` | Invoice documents |
-| Table | `SFE_RAW_ENTERTAINMENT` | `RAW_ROYALTY_STATEMENTS` | Royalty documents |
-| Table | `SFE_RAW_ENTERTAINMENT` | `RAW_CONTRACTS` | Contract documents |
-| Table | `SFE_STG_ENTERTAINMENT` | `STG_PARSED_DOCUMENTS` | AI parsing results |
-| Table | `SFE_STG_ENTERTAINMENT` | `STG_TRANSLATED_CONTENT` | Translated text |
-| Table | `SFE_STG_ENTERTAINMENT` | `STG_CLASSIFIED_DOCS` | Document classifications |
-| Table | `SFE_ANALYTICS_ENTERTAINMENT` | `FCT_DOCUMENT_INSIGHTS` | Aggregated metrics |
-| View | `SFE_ANALYTICS_ENTERTAINMENT` | `V_PROCESSING_METRICS` | Monitoring dashboard |
-| Streamlit | `SFE_ANALYTICS_ENTERTAINMENT` | `SFE_DOCUMENT_DASHBOARD` | Interactive UI |
+| Schema | - | `SWIFTCLAW` | Project schema (raw, staging, analytics) |
+| Table | `SWIFTCLAW` | `RAW_DOCUMENT_CATALOG` | Document metadata + stage paths |
+| Table | `SWIFTCLAW` | `RAW_DOCUMENT_PROCESSING_LOG` | Processing audit |
+| Table | `SWIFTCLAW` | `RAW_DOCUMENT_ERRORS` | Error tracking |
+| Table | `SWIFTCLAW` | `STG_PARSED_DOCUMENTS` | AI parsing results |
+| Table | `SWIFTCLAW` | `STG_TRANSLATED_CONTENT` | Translated text |
+| Table | `SWIFTCLAW` | `STG_CLASSIFIED_DOCS` | Document classifications |
+| Table | `SWIFTCLAW` | `STG_EXTRACTED_ENTITIES` | Entity extraction results |
+| Table | `SWIFTCLAW` | `FCT_DOCUMENT_INSIGHTS` | Aggregated metrics |
+| View | `SWIFTCLAW` | `V_PROCESSING_METRICS` | Monitoring dashboard |
+| Streamlit | `SWIFTCLAW` | `SFE_DOCUMENT_DASHBOARD` | Interactive UI |
 
 ---
 
@@ -264,7 +259,7 @@ The demo includes 6 multilingual bridge loan contract PDFs in the `pdfs/` folder
 4. **Wait for cataloging** - Files are registered in the catalog automatically
 
 5. **Complete the upload** - Follow the on-screen instructions:
-   - Navigate to: **Data** → **Databases** → **SNOWFLAKE_EXAMPLE** → **SFE_RAW_ENTERTAINMENT** → **Stages**
+   - Navigate to: **Data** → **Databases** → **SNOWFLAKE_EXAMPLE** → **SWIFTCLAW** → **Stages**
    - Click **DOCUMENT_STAGE** → **"+ Files"** → **contracts/** directory
    - Upload the same PDFs to complete the process
    - Verify files appear in stage listing
@@ -318,40 +313,40 @@ The `pdfs/` folder contains 6 multilingual bridge loan contracts:
 ```sql
 -- Extract text and layout from documents on stage
 -- AI_PARSE_DOCUMENT takes 2 arguments: FILE object, options
-SELECT 
+SELECT
     catalog.document_id,
     catalog.file_name,
     AI_PARSE_DOCUMENT(
-        TO_FILE('@DOCUMENT_STAGE', 'invoices/invoice_001.pdf'),  -- FILE object
+        TO_FILE('@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE', 'invoices/invoice_001.pdf'),  -- FILE object
         OBJECT_CONSTRUCT('mode', 'LAYOUT')                        -- Options: 'OCR' or 'LAYOUT'
     ) AS parsed_document;
 
 -- Or using catalog table (stage and path stored separately):
-SELECT 
+SELECT
     catalog.document_id,
     AI_PARSE_DOCUMENT(
         TO_FILE(catalog.stage_name, catalog.file_path),  -- Simple!
         OBJECT_CONSTRUCT('mode', 'LAYOUT')
     ) AS parsed_document
-FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
+FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog
 WHERE catalog.document_type = 'INVOICE'
 LIMIT 5;
 
 -- View already parsed results
-SELECT 
+SELECT
     document_id,
     extraction_mode,
     page_count,
     confidence_score,
     parsed_content:text::STRING AS extracted_text
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
+FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
 LIMIT 5;
 ```
 
 ### 2. Translate with AI_TRANSLATE
 ```sql
 -- Translate non-English documents to English
-SELECT 
+SELECT
     parsed_id,
     source_language,
     AI_TRANSLATE(
@@ -359,19 +354,19 @@ SELECT
         source_language,   -- 'es', 'fr', 'de', etc. (or '' for auto-detect)
         'en'               -- Target language
     ) AS translated_text
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS parsed
-JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+FROM SWIFTCLAW.STG_PARSED_DOCUMENTS parsed
+JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
 WHERE catalog.original_language <> 'en'
 LIMIT 5;
 
 -- View translation results
-SELECT 
+SELECT
     source_language,
     target_language,
     SUBSTR(source_text, 1, 100) AS source_preview,
     SUBSTR(translated_text, 1, 100) AS translated_preview,
     translation_confidence
-FROM SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT
+FROM SWIFTCLAW.STG_TRANSLATED_CONTENT
 LIMIT 5;
 ```
 
@@ -379,7 +374,7 @@ LIMIT 5;
 
 **Basic Classification:**
 ```sql
-SELECT 
+SELECT
     document_id,
     AI_CLASSIFY(
         parsed_content:extracted_text::STRING,
@@ -389,14 +384,14 @@ SELECT
         parsed_content:extracted_text::STRING,
         ['Invoice', 'Royalty Statement', 'Contract', 'Other']
     ):confidence::FLOAT AS classification_confidence
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
+FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
 LIMIT 10;
 ```
 
 **Enhanced Classification with Category Descriptions:**
 ```sql
 -- Using category descriptions for improved accuracy
-SELECT 
+SELECT
     document_id,
     AI_CLASSIFY(
         parsed_content:extracted_text::STRING,
@@ -422,7 +417,7 @@ SELECT
             }
         ]
     ):label::STRING AS enhanced_classification
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
+FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
 LIMIT 10;
 ```
 
@@ -431,7 +426,7 @@ LIMIT 10;
 **Intelligent entity extraction without patterns:**
 ```sql
 -- Extract multiple invoice fields in one AI call
-SELECT 
+SELECT
     parsed_id,
     AI_EXTRACT(
         parsed_content:text::STRING,
@@ -444,25 +439,25 @@ SELECT
             'payment_terms': 'The payment terms (e.g., Net 30, Net 60)'
         }
     ) AS extracted_entities
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS
-WHERE document_id IN (SELECT document_id FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG WHERE document_type = 'INVOICE')
+FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
+WHERE document_id IN (SELECT document_id FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG WHERE document_type = 'INVOICE')
 LIMIT 5;
 
 -- View extracted entities (flattened)
-SELECT 
+SELECT
     catalog.document_type,
     entity.entity_type,
     entity.entity_value,
     entity.extraction_confidence
-FROM SFE_STG_ENTERTAINMENT.STG_EXTRACTED_ENTITIES entity
-JOIN SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS parsed ON entity.parsed_id = parsed.parsed_id
-JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES entity
+JOIN SWIFTCLAW.STG_PARSED_DOCUMENTS parsed ON entity.parsed_id = parsed.parsed_id
+JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
 LIMIT 20;
 ```
 
 **Why AI_EXTRACT beats regex:**
 - ✅ No pattern maintenance as formats change
-- ✅ Handles layout variations automatically  
+- ✅ Handles layout variations automatically
 - ✅ Understands semantic meaning, not just text patterns
 - ✅ Multi-field extraction in single API call
 - ✅ Works across different document formats
@@ -478,22 +473,22 @@ Remove all demo artifacts:
 @sql/99_cleanup/teardown_all.sql
 
 -- Or manually:
-DROP DATABASE IF EXISTS SNOWFLAKE_EXAMPLE CASCADE;
+DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW CASCADE;
 DROP WAREHOUSE IF EXISTS SFE_DOCUMENT_AI_WH;
 DROP API INTEGRATION IF EXISTS SFE_GIT_API_INTEGRATION;
 ```
 
-**Time:** < 1 minute  
-**Verification:** Run `SHOW DATABASES LIKE 'SNOWFLAKE_EXAMPLE'` - should return no results
+**Time:** < 1 minute
+**Verification:** Run `SHOW SCHEMAS LIKE 'SWIFTCLAW' IN DATABASE SNOWFLAKE_EXAMPLE` - should return no results
 
 ---
 
 ## Support & Feedback
 
-**Reference Implementation Notice:**  
+**Reference Implementation Notice:**
 This code demonstrates production-grade architectural patterns and best practices. Review and customize security, networking, and business logic for your organization's specific requirements before production deployment.
 
-**Questions?**  
+**Questions?**
 - Review `docs/04-TROUBLESHOOTING.md` for common issues
 - Check Snowflake documentation for AI Functions updates
 - Contact your Snowflake account team for production guidance
@@ -506,14 +501,14 @@ This code demonstrates production-grade architectural patterns and best practice
 
 **Note:** This repository does not contain a `.gitignore` file by design (stealth compliance).
 
-**Why No .gitignore:**  
+**Why No .gitignore:**
 Per SE community standards, `.gitignore` files that reference `.cursor/` or other AI tooling reveal development methodology. Instead, we use a **global git ignore** strategy:
 
 - **Global Ignore File:** `~/.config/git/ignore` (symlinked from `~/dotfiles/git/gitignore_global`)
 - **Coverage:** 516 patterns including `.cursor/`, `.vscode/`, OS files, credentials, language environments
 - **Benefit:** Universal protection across ALL repos without revealing tooling in any individual repository
 
-**Setup:**  
+**Setup:**
 If you don't have global ignore configured:
 ```bash
 git config --global core.excludesfile ~/.config/git/ignore
@@ -526,7 +521,7 @@ git config --global core.excludesfile ~/.config/git/ignore
 - OS: `.DS_Store`, `Thumbs.db`, `desktop.ini`
 - Languages: `venv/`, `node_modules/`, `__pycache__/`, `target/`
 
-**Project-Specific Exclusions:**  
+**Project-Specific Exclusions:**
 Use `.git/info/exclude` for patterns unique to this project (not committed to repo).
 
 ---
@@ -537,5 +532,4 @@ Apache 2.0 - See LICENSE file for details
 
 ---
 
-**Demo Expiration:** This repository will be archived and made private on 2025-12-24
-
+**Demo Expiration:** This repository will be archived and made private on 2026-01-09

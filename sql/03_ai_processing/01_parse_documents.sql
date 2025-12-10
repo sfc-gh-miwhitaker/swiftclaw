@@ -1,34 +1,34 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Parse Documents with AI_PARSE_DOCUMENT
- * 
+ *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
- * 
+ *
  * PURPOSE:
  *   Use Snowflake Cortex AI_PARSE_DOCUMENT to extract text and layout from
  *   documents stored on internal stage. Demonstrates both OCR and LAYOUT modes.
- * 
+ *
  * REQUIREMENTS:
  *   - Documents uploaded to @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE
  *   - SNOWFLAKE.CORTEX_USER database role granted
- * 
+ *
  * AI FUNCTION: AI_PARSE_DOCUMENT
  *   Syntax: AI_PARSE_DOCUMENT(TO_FILE('@stage', 'path'), {'mode': 'OCR'|'LAYOUT'})
  *   Modes:
  *     - OCR: Extract text only (default)
  *     - LAYOUT: Extract text + structural elements (tables, headers)
- * 
+ *
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
- * 
+ *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
  ******************************************************************************/
 
 -- Set context
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
-USE SCHEMA SFE_STG_ENTERTAINMENT;
+USE SCHEMA SWIFTCLAW;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
@@ -43,14 +43,14 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 CREATE OR REPLACE TEMPORARY TABLE TMP_PENDING_PARSE_DOCS AS
 WITH stage_inventory AS (
     SELECT relative_path
-    FROM DIRECTORY(@SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE)
+    FROM DIRECTORY(@SWIFTCLAW.DOCUMENT_STAGE)
 )
 SELECT
     catalog.document_id,
     catalog.stage_name,
     catalog.file_path,
     stage_inventory.relative_path IS NOT NULL AS has_stage_file
-FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog
+FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog
 LEFT JOIN stage_inventory
     ON stage_inventory.relative_path = catalog.file_path
 WHERE catalog.processing_status = 'PENDING'
@@ -74,7 +74,7 @@ SELECT
 FROM TMP_PENDING_PARSE_DOCS
 WHERE has_stage_file = TRUE;
 
-INSERT INTO STG_PARSED_DOCUMENTS (
+INSERT INTO SWIFTCLAW.STG_PARSED_DOCUMENTS (
     parsed_id,
     document_id,
     parsed_content,
@@ -97,7 +97,7 @@ SELECT
 FROM TMP_PARSED_DOCS_RUN;
 
 -- Log processing attempt
-INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
+INSERT INTO SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG (
     log_id,
     document_id,
     processing_step,
@@ -117,17 +117,17 @@ SELECT
 FROM TMP_PARSED_DOCS_RUN parsed;
 
 -- Update catalog status
-UPDATE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG
-SET 
+UPDATE SWIFTCLAW.RAW_DOCUMENT_CATALOG
+SET
     processing_status = 'COMPLETED',
     last_processed_at = CURRENT_TIMESTAMP()
 WHERE document_id IN (
-    SELECT document_id 
+    SELECT document_id
     FROM TMP_PARSED_DOCS_RUN
 );
 
 -- Log failures
-INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
+INSERT INTO SWIFTCLAW.RAW_DOCUMENT_ERRORS (
     error_id,
     document_id,
     error_step,
@@ -144,7 +144,7 @@ FROM TMP_PENDING_PARSE_DOCS missing
 WHERE missing.has_stage_file = FALSE
 AND NOT EXISTS (
     SELECT 1
-    FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS err
+    FROM SWIFTCLAW.RAW_DOCUMENT_ERRORS err
     WHERE err.document_id = missing.document_id
       AND err.error_step = 'PARSE'
       AND err.error_message = 'Document skipped - file not found on stage'
@@ -186,17 +186,17 @@ FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog;
 -- ============================================================================
 
 -- Check parsing results
-SELECT 
+SELECT
     COUNT(*) AS total_parsed,
     COUNT(DISTINCT document_id) AS unique_documents,
     AVG(confidence_score) AS avg_confidence,
     MIN(confidence_score) AS min_confidence,
     MAX(confidence_score) AS max_confidence,
     AVG(processing_duration_seconds) AS avg_duration_sec
-FROM STG_PARSED_DOCUMENTS;
+FROM SWIFTCLAW.STG_PARSED_DOCUMENTS;
 
 -- Sample parsed content structure
-SELECT 
+SELECT
     document_id,
     extraction_mode,
     page_count,
@@ -204,15 +204,15 @@ SELECT
     -- Show first 100 characters of parsed text
     SUBSTR(parsed_content:text::STRING, 1, 100) AS text_preview,
     processed_at
-FROM STG_PARSED_DOCUMENTS
+FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
 LIMIT 5;
 
 -- Check for parsing errors
-SELECT 
+SELECT
     COUNT(*) AS failed_documents,
     error_message,
     COUNT(*) AS error_count
-FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS
+FROM SWIFTCLAW.RAW_DOCUMENT_ERRORS
 WHERE error_step = 'PARSE'
 GROUP BY error_message;
 

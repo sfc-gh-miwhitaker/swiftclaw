@@ -1,8 +1,8 @@
 # Data Flow - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24 (30 days from creation)  
+**Author:** SE Community
+**Last Updated:** 2025-12-10
+**Expires:** 2026-01-09 (30 days from creation)
 **Status:** Reference Implementation
 
 ![Snowflake](https://img.shields.io/badge/Snowflake-29B5E8?style=for-the-badge&logo=snowflake&logoColor=white)
@@ -21,57 +21,55 @@ graph TB
         PDF[PDF Documents]
         IMG[Image Documents]
     end
-    
-    subgraph "Ingestion Layer - SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT"
+
+    subgraph "Ingestion Layer - SNOWFLAKE_EXAMPLE.SWIFTCLAW"
         Stage[Snowflake Stage]
-        Raw1[RAW_INVOICES]
-        Raw2[RAW_ROYALTY_STATEMENTS]
-        Raw3[RAW_CONTRACTS]
+        Catalog[RAW_DOCUMENT_CATALOG]
     end
-    
-    subgraph "AI Processing Layer - SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT"
+
+    subgraph "AI Processing Layer - SNOWFLAKE_EXAMPLE.SWIFTCLAW"
         Parse[AI_PARSE_DOCUMENT]
         Parsed[STG_PARSED_DOCUMENTS]
         Translate[AI_TRANSLATE]
         Translated[STG_TRANSLATED_CONTENT]
-        Classify[AI_FILTER]
+        Classify[AI_CLASSIFY]
         Classified[STG_CLASSIFIED_DOCS]
+        Extract[AI_EXTRACT]
+        Entities[STG_EXTRACTED_ENTITIES]
     end
-    
-    subgraph "Analytics Layer - SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT"
-        Agg[AI_AGG]
+
+    subgraph "Analytics Layer - SNOWFLAKE_EXAMPLE.SWIFTCLAW"
         Insights[FCT_DOCUMENT_INSIGHTS]
         Metrics[V_PROCESSING_METRICS]
     end
-    
+
     subgraph "Consumption Layer"
         Streamlit[Streamlit Dashboard]
         SQL[SQL Analytics]
     end
-    
+
     PDF -->|COPY INTO| Stage
     IMG -->|COPY INTO| Stage
-    Stage -->|Load Binary| Raw1
-    Stage -->|Load Binary| Raw2
-    Stage -->|Load Binary| Raw3
-    
-    Raw1 -->|LAYOUT Mode| Parse
-    Raw2 -->|LAYOUT Mode| Parse
-    Raw3 -->|LAYOUT Mode| Parse
+    Stage -->|Catalog metadata| Catalog
+
+    Catalog -->|Stage file path| Parse
     Parse -->|Structured JSON| Parsed
-    
+
     Parsed -->|Multilingual Text| Translate
     Translate -->|English Translation| Translated
-    
+
     Parsed -->|Document Content| Classify
     Classify -->|Type + Priority| Classified
-    
-    Translated -->|Aggregation Query| Agg
-    Classified -->|Aggregation Query| Agg
-    Agg -->|Business Metrics| Insights
-    
+
+    Parsed -->|Document Content| Extract
+    Extract -->|Entities| Entities
+
+    Translated -->|Aggregation Query| Insights
+    Classified -->|Aggregation Query| Insights
+    Entities -->|Aggregation Query| Insights
+
     Insights -->|Monitor| Metrics
-    
+
     Metrics -->|Visualize| Streamlit
     Insights -->|Visualize| Streamlit
     Insights -->|Query| SQL
@@ -80,10 +78,10 @@ graph TB
 ## Data Flow Stages
 
 ### Stage 1: Document Ingestion
-**Input:** PDF/Image files from external systems  
-**Process:** COPY INTO command loads files to Snowflake stage  
-**Output:** Binary data in RAW_* tables  
-**Technology:** Snowflake internal stage, COPY INTO command  
+**Input:** PDF/Image files from external systems
+**Process:** COPY INTO command loads files to Snowflake stage
+**Output:** Binary data in RAW_* tables
+**Technology:** Snowflake internal stage, COPY INTO command
 **Format:** Binary PDF content + metadata (vendor, date, language)
 
 **Transformation Logic:**
@@ -96,17 +94,17 @@ PATTERN = '.*\.pdf$';
 ```
 
 ### Stage 2: AI Document Parsing
-**Input:** Binary PDF content from RAW_* tables  
-**Process:** AI_PARSE_DOCUMENT extracts text + preserves table layouts  
-**Output:** Structured JSON in STG_PARSED_DOCUMENTS  
-**Technology:** SNOWFLAKE.CORTEX.PARSE_DOCUMENT  
+**Input:** Binary PDF content from RAW_* tables
+**Process:** AI_PARSE_DOCUMENT extracts text + preserves table layouts
+**Output:** Structured JSON in STG_PARSED_DOCUMENTS
+**Technology:** SNOWFLAKE.CORTEX.PARSE_DOCUMENT
 **Format:** VARIANT (JSON) with extracted text, tables, layout
 
 **Transformation Logic:**
 ```sql
 -- Parse documents with AI
 INSERT INTO STG_PARSED_DOCUMENTS (parsed_id, document_id, parsed_content, confidence_score)
-SELECT 
+SELECT
     UUID_STRING() AS parsed_id,
     document_id,
     SNOWFLAKE.CORTEX.PARSE_DOCUMENT(pdf_content, {'mode': 'LAYOUT'}) AS parsed_content,
@@ -121,17 +119,17 @@ WHERE processed_flag = FALSE;
 - Layout preservation: Tables, headers, footers maintained
 
 ### Stage 3: AI Translation
-**Input:** Parsed text content from STG_PARSED_DOCUMENTS  
-**Process:** AI_TRANSLATE converts non-English content to English  
-**Output:** Translated JSON in STG_TRANSLATED_CONTENT  
-**Technology:** SNOWFLAKE.CORTEX.TRANSLATE  
+**Input:** Parsed text content from STG_PARSED_DOCUMENTS
+**Process:** AI_TRANSLATE converts non-English content to English
+**Output:** Translated JSON in STG_TRANSLATED_CONTENT
+**Technology:** SNOWFLAKE.CORTEX.TRANSLATE
 **Format:** VARIANT with source + translated text, confidence scores
 
 **Transformation Logic:**
 ```sql
 -- Translate non-English content
 INSERT INTO STG_TRANSLATED_CONTENT (translation_id, parsed_id, translated_content)
-SELECT 
+SELECT
     UUID_STRING() AS translation_id,
     parsed_id,
     SNOWFLAKE.CORTEX.TRANSLATE(
@@ -150,24 +148,24 @@ WHERE parsed_content:detected_language::STRING <> 'en';
 - Proper nouns (company names, people names)
 
 ### Stage 4: AI Document Classification
-**Input:** Parsed content from STG_PARSED_DOCUMENTS  
-**Process:** AI_FILTER classifies by type, priority, business category  
-**Output:** Classification labels in STG_CLASSIFIED_DOCS  
-**Technology:** SNOWFLAKE.CORTEX.CLASSIFY  
+**Input:** Parsed content from STG_PARSED_DOCUMENTS
+**Process:** AI_FILTER classifies by type, priority, business category
+**Output:** Classification labels in STG_CLASSIFIED_DOCS
+**Technology:** SNOWFLAKE.CORTEX.CLASSIFY
 **Format:** Structured columns with classification + confidence
 
 **Transformation Logic:**
 ```sql
 -- Classify documents by type
 INSERT INTO STG_CLASSIFIED_DOCS (classification_id, parsed_id, document_type, priority_level)
-SELECT 
+SELECT
     UUID_STRING() AS classification_id,
     parsed_id,
     SNOWFLAKE.CORTEX.CLASSIFY(
         parsed_content:extracted_text::STRING,
         ['Invoice', 'Royalty Statement', 'Contract', 'Other']
     ) AS document_type,
-    CASE 
+    CASE
         WHEN parsed_content:total_amount::FLOAT > 50000 THEN 'High'
         WHEN parsed_content:total_amount::FLOAT > 10000 THEN 'Medium'
         ELSE 'Low'
@@ -181,17 +179,17 @@ FROM STG_PARSED_DOCUMENTS;
 - Low priority: Routine invoices < $10K, informational documents
 
 ### Stage 5: AI Aggregation & Insights
-**Input:** Translated + classified documents  
-**Process:** AI_AGG generates cross-document insights  
-**Output:** Business metrics in FCT_DOCUMENT_INSIGHTS  
-**Technology:** SNOWFLAKE.CORTEX.SUMMARIZE  
+**Input:** Translated + classified documents
+**Process:** AI_AGG generates cross-document insights
+**Output:** Business metrics in FCT_DOCUMENT_INSIGHTS
+**Technology:** SNOWFLAKE.CORTEX.SUMMARIZE
 **Format:** Aggregated fact table with dimensional attributes
 
 **Transformation Logic:**
 ```sql
 -- Aggregate insights across documents
 INSERT INTO FCT_DOCUMENT_INSIGHTS (insight_id, document_id, total_amount, document_type)
-SELECT 
+SELECT
     UUID_STRING() AS insight_id,
     d.document_id,
     t.translated_content:total_amount::FLOAT AS total_amount,
@@ -209,10 +207,10 @@ WHERE c.classification_confidence > 0.85;
 - Documents requiring manual review
 
 ### Stage 6: Consumption
-**Input:** Insights from FCT_DOCUMENT_INSIGHTS  
-**Process:** SQL queries + Streamlit dashboard visualizations  
-**Output:** Business user-friendly interface  
-**Technology:** Snowflake Streamlit, SQL  
+**Input:** Insights from FCT_DOCUMENT_INSIGHTS
+**Process:** SQL queries + Streamlit dashboard visualizations
+**Output:** Business user-friendly interface
+**Technology:** Snowflake Streamlit, SQL
 **Format:** Interactive charts, tables, filters
 
 **Access Patterns:**
@@ -248,7 +246,7 @@ WHERE c.classification_confidence > 0.85;
 ### Monitoring Queries
 ```sql
 -- View processing success rates
-SELECT 
+SELECT
     document_source_table,
     COUNT(*) AS total_processed,
     AVG(confidence_score) AS avg_confidence,
@@ -264,7 +262,6 @@ See `.cursor/DIAGRAM_CHANGELOG.md` for version history.
 
 ---
 
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24  
+**Last Updated:** 2025-11-24
+**Expires:** 2025-12-24
 **Author:** SE Community
-

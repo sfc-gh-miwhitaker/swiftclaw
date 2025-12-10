@@ -1,8 +1,8 @@
 # Data Model - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24 (30 days from creation)  
+**Author:** SE Community
+**Last Updated:** 2025-12-10
+**Expires:** 2026-01-09 (30 days from creation)
 **Status:** Reference Implementation
 
 ![Snowflake](https://img.shields.io/badge/Snowflake-29B5E8?style=for-the-badge&logo=snowflake&logoColor=white)
@@ -17,66 +17,75 @@ This diagram shows the database schema and relationships for AI-powered document
 
 ```mermaid
 erDiagram
-    RAW_INVOICES ||--o{ STG_PARSED_DOCUMENTS : "parsed_via_AI"
-    RAW_ROYALTY_STATEMENTS ||--o{ STG_PARSED_DOCUMENTS : "parsed_via_AI"
-    RAW_CONTRACTS ||--o{ STG_PARSED_DOCUMENTS : "parsed_via_AI"
-    
+    RAW_DOCUMENT_CATALOG ||--o{ STG_PARSED_DOCUMENTS : "parsed_via_AI"
+    RAW_DOCUMENT_PROCESSING_LOG ||--|| RAW_DOCUMENT_CATALOG : "tracks"
+    RAW_DOCUMENT_ERRORS ||--|| RAW_DOCUMENT_CATALOG : "errors_for"
     STG_PARSED_DOCUMENTS ||--o{ STG_TRANSLATED_CONTENT : "translated"
     STG_PARSED_DOCUMENTS ||--o{ STG_CLASSIFIED_DOCS : "classified"
-    
+    STG_PARSED_DOCUMENTS ||--o{ STG_EXTRACTED_ENTITIES : "entities"
     STG_TRANSLATED_CONTENT ||--o{ FCT_DOCUMENT_INSIGHTS : "aggregated"
     STG_CLASSIFIED_DOCS ||--o{ FCT_DOCUMENT_INSIGHTS : "aggregated"
-    
-    RAW_INVOICES {
+    STG_EXTRACTED_ENTITIES ||--o{ FCT_DOCUMENT_INSIGHTS : "aggregated"
+
+    RAW_DOCUMENT_CATALOG {
         string document_id PK
-        binary pdf_content
-        string vendor_name
+        string document_type
+        string stage_name
+        string file_path
+        string file_name
+        string file_format
+        number file_size_bytes
+        string original_language
         timestamp upload_date
-        string original_language
-        string file_format
-        int file_size_bytes
+        string processing_status
+        timestamp last_processed_at
+        variant metadata
     }
-    
-    RAW_ROYALTY_STATEMENTS {
-        string document_id PK
-        binary pdf_content
-        string territory
-        timestamp period_start_date
-        timestamp period_end_date
-        string original_language
-        string file_format
+
+    RAW_DOCUMENT_PROCESSING_LOG {
+        string log_id PK
+        string document_id FK
+        string processing_step
+        timestamp started_at
+        timestamp completed_at
+        number duration_seconds
+        string status
+        string error_message
     }
-    
-    RAW_CONTRACTS {
-        string document_id PK
-        binary pdf_content
-        string contract_type
-        timestamp effective_date
-        string original_language
-        string file_format
-        boolean contains_sensitive_info
+
+    RAW_DOCUMENT_ERRORS {
+        string error_id PK
+        string document_id FK
+        string error_step
+        timestamp error_timestamp
+        string error_code
+        string error_message
+        variant error_details
+        number retry_count
     }
-    
+
     STG_PARSED_DOCUMENTS {
         string parsed_id PK
         string document_id FK
         variant parsed_content
-        string extraction_method
+        string extraction_mode
         float confidence_score
+        number page_count
         timestamp processed_at
-        string document_source_table
+        number processing_duration_seconds
     }
-    
+
     STG_TRANSLATED_CONTENT {
         string translation_id PK
         string parsed_id FK
         string source_language
         string target_language
-        variant translated_content
+        string source_text
+        string translated_text
         float translation_confidence
         timestamp translated_at
     }
-    
+
     STG_CLASSIFIED_DOCS {
         string classification_id PK
         string parsed_id FK
@@ -84,20 +93,33 @@ erDiagram
         string priority_level
         string business_category
         float classification_confidence
+        variant classification_details
         timestamp classified_at
     }
-    
+
+    STG_EXTRACTED_ENTITIES {
+        string extraction_id PK
+        string parsed_id FK
+        string entity_type
+        string entity_value
+        float extraction_confidence
+        timestamp extracted_at
+    }
+
     FCT_DOCUMENT_INSIGHTS {
         string insight_id PK
         string document_id FK
         string document_type
         float total_amount
         string currency
-        timestamp document_date
+        date document_date
         string vendor_territory
-        int processing_time_seconds
+        number processing_time_seconds
+        float overall_confidence_score
         boolean requires_manual_review
+        string manual_review_reason
         timestamp insight_created_at
+        variant metadata
     }
 ```
 
@@ -213,7 +235,6 @@ See `.cursor/DIAGRAM_CHANGELOG.md` for version history.
 
 ---
 
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24  
+**Last Updated:** 2025-11-24
+**Expires:** 2025-12-24
 **Author:** SE Community
-

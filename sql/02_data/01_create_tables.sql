@@ -1,38 +1,40 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Create Database Tables
- * 
+ *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
- * 
+ *
  * PURPOSE:
  *   Create tables for storing document metadata, AI processing results, and
  *   business insights across all three schema layers.
- * 
+ *
  * OBJECTS CREATED:
  *   RAW LAYER (3 tables):
- *   - DOCUMENT_CATALOG: Document metadata and stage paths
- *   - DOCUMENT_PROCESSING_LOG: Processing status tracking
- *   - DOCUMENT_ERRORS: Error tracking for failed processing
- * 
+ *   - RAW_DOCUMENT_CATALOG: Document metadata and stage paths
+ *   - RAW_DOCUMENT_PROCESSING_LOG: Processing status tracking
+ *   - RAW_DOCUMENT_ERRORS: Error tracking for failed processing
+ *
  *   STAGING LAYER (4 tables):
  *   - STG_PARSED_DOCUMENTS: AI_PARSE_DOCUMENT results
  *   - STG_TRANSLATED_CONTENT: AI_TRANSLATE results
  *   - STG_CLASSIFIED_DOCS: AI_CLASSIFY results
  *   - STG_EXTRACTED_ENTITIES: AI_EXTRACT results
- * 
- *   ANALYTICS LAYER (1 table):
+ *
+ *   ANALYTICS LAYER (1 table + 1 view):
  *   - FCT_DOCUMENT_INSIGHTS: Aggregated business metrics
- * 
+ *   - V_PROCESSING_METRICS: Pipeline monitoring view
+ *
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
- * 
+ *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
  ******************************************************************************/
 
 -- Set context (ensure ACCOUNTADMIN role for table creation)
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
+USE SCHEMA SWIFTCLAW;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
@@ -40,10 +42,10 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- ============================================================================
 
 -- Document Catalog: Metadata for all documents
-CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG (
+CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_CATALOG (
     document_id STRING PRIMARY KEY,
     document_type STRING NOT NULL,  -- 'INVOICE', 'ROYALTY_STATEMENT', 'CONTRACT'
-    stage_name STRING DEFAULT '@DOCUMENT_STAGE',  -- Stage name (e.g., '@DOCUMENT_STAGE')
+    stage_name STRING DEFAULT '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE',  -- Qualified stage
     file_path STRING NOT NULL,      -- Relative path within stage (e.g., 'invoices/invoice_001.pdf')
     file_name STRING NOT NULL,      -- Just the filename (e.g., 'invoice_001.pdf')
     file_format STRING DEFAULT 'PDF',
@@ -54,10 +56,10 @@ CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG (
     last_processed_at TIMESTAMP_NTZ,
     metadata VARIANT  -- Additional business metadata
 )
-COMMENT = 'DEMO: swiftclaw - Document catalog with stage paths | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Document catalog with stage paths | Expires: 2026-01-09 | Author: SE Community';
 
 -- Processing Log: Track processing attempts and timing
-CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
+CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG (
     log_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     document_id STRING NOT NULL,
     processing_step STRING NOT NULL,  -- 'PARSE', 'TRANSLATE', 'CLASSIFY', 'EXTRACT'
@@ -67,10 +69,10 @@ CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
     status STRING,  -- 'SUCCESS', 'FAILED'
     error_message STRING
 )
-COMMENT = 'DEMO: swiftclaw - Processing audit log | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Processing audit log | Expires: 2026-01-09 | Author: SE Community';
 
 -- Error Tracking: Detailed error information
-CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
+CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_ERRORS (
     error_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     document_id STRING NOT NULL,
     error_step STRING NOT NULL,
@@ -80,7 +82,7 @@ CREATE OR REPLACE TABLE SFE_RAW_ENTERTAINMENT.DOCUMENT_ERRORS (
     error_details VARIANT,
     retry_count NUMBER DEFAULT 0
 )
-COMMENT = 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2026-01-09 | Author: SE Community';
 
 SELECT 'Raw layer tables created: 3 tables' AS status;
 
@@ -89,7 +91,7 @@ SELECT 'Raw layer tables created: 3 tables' AS status;
 -- ============================================================================
 
 -- Parsed Documents Table (AI_PARSE_DOCUMENT results)
-CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS (
+CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_PARSED_DOCUMENTS (
     parsed_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     document_id STRING NOT NULL,
     parsed_content VARIANT NOT NULL,  -- Full JSON output from AI_PARSE_DOCUMENT
@@ -99,10 +101,10 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS (
     processed_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     processing_duration_seconds NUMBER
 )
-COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2026-01-09 | Author: SE Community';
 
 -- Translated Content Table (AI_TRANSLATE results)
-CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT (
+CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_TRANSLATED_CONTENT (
     translation_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     parsed_id STRING NOT NULL,
     source_language STRING NOT NULL,
@@ -112,10 +114,10 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_TRANSLATED_CONTENT (
     translation_confidence FLOAT,
     translated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 )
-COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2026-01-09 | Author: SE Community';
 
 -- Classified Documents Table (AI_CLASSIFY results)
-CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_CLASSIFIED_DOCS (
+CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_CLASSIFIED_DOCS (
     classification_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     parsed_id STRING NOT NULL,
     document_type STRING NOT NULL,  -- Predicted type
@@ -125,10 +127,10 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_CLASSIFIED_DOCS (
     classification_details VARIANT,  -- Full AI_CLASSIFY response
     classified_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 )
-COMMENT = 'DEMO: swiftclaw - AI_CLASSIFY results | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_CLASSIFY results | Expires: 2026-01-09 | Author: SE Community';
 
 -- Extracted Entities Table (AI_EXTRACT results)
-CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_EXTRACTED_ENTITIES (
+CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_EXTRACTED_ENTITIES (
     extraction_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     parsed_id STRING NOT NULL,
     entity_type STRING NOT NULL,  -- 'invoice_number', 'amount', 'vendor', etc.
@@ -136,7 +138,7 @@ CREATE OR REPLACE TRANSIENT TABLE SFE_STG_ENTERTAINMENT.STG_EXTRACTED_ENTITIES (
     extraction_confidence FLOAT,
     extracted_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 )
-COMMENT = 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2026-01-09 | Author: SE Community';
 
 SELECT 'Staging layer tables created: 4 transient tables' AS status;
 
@@ -145,7 +147,7 @@ SELECT 'Staging layer tables created: 4 transient tables' AS status;
 -- ============================================================================
 
 -- Document Insights Fact Table
-CREATE OR REPLACE TABLE SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS (
+CREATE OR REPLACE TABLE SWIFTCLAW.FCT_DOCUMENT_INSIGHTS (
     insight_id STRING PRIMARY KEY DEFAULT UUID_STRING(),
     document_id STRING NOT NULL,
     document_type STRING,
@@ -160,15 +162,13 @@ CREATE OR REPLACE TABLE SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS (
     insight_created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     metadata VARIANT
 )
-COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2025-12-24 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2026-01-09 | Author: SE Community';
 
 -- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 
 -- Verify all tables created successfully
-SHOW TABLES IN SCHEMA SFE_RAW_ENTERTAINMENT;
-SHOW TABLES IN SCHEMA SFE_STG_ENTERTAINMENT;
-SHOW TABLES IN SCHEMA SFE_ANALYTICS_ENTERTAINMENT;
+SHOW TABLES IN SCHEMA SWIFTCLAW;
 
 SELECT 'All tables created successfully - 8 total tables' AS final_status;

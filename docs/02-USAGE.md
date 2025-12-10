@@ -1,8 +1,8 @@
 # Usage Guide - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24
+**Author:** SE Community
+**Last Updated:** 2025-11-24
+**Expires:** 2026-01-09
 
 ---
 
@@ -67,7 +67,7 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 **View All Document Insights:**
 ```sql
-SELECT 
+SELECT
     document_type,
     vendor_territory,
     total_amount,
@@ -80,7 +80,7 @@ LIMIT 100;
 
 **High-Value Invoices Needing Review:**
 ```sql
-SELECT 
+SELECT
     document_id,
     total_amount,
     vendor_territory,
@@ -99,7 +99,7 @@ SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.V_PROCESSING_METRICS;
 
 **Documents by Language:**
 ```sql
-SELECT 
+SELECT
     parsed_content:detected_language::STRING AS language,
     COUNT(*) AS document_count,
     AVG(confidence_score) AS avg_confidence
@@ -109,7 +109,7 @@ GROUP BY language;
 
 **Top 10 Vendors by Value:**
 ```sql
-SELECT 
+SELECT
     vendor_territory AS vendor,
     COUNT(*) AS invoice_count,
     SUM(total_amount) AS total_invoiced,
@@ -129,7 +129,7 @@ LIMIT 10;
 
 ```sql
 -- View raw invoice metadata
-SELECT 
+SELECT
     document_id,
     vendor_name,
     original_language,
@@ -143,7 +143,7 @@ LIMIT 10;
 
 ```sql
 -- View parsed document structure
-SELECT 
+SELECT
     document_id,
     parsed_content:document_type::STRING AS doc_type,
     parsed_content:total_amount::FLOAT AS amount,
@@ -159,27 +159,27 @@ LIMIT 10;
 WITH document_trace AS (
     SELECT 'INV_...' AS doc_id  -- Replace with actual document_id
 )
-SELECT 'Raw Document' AS stage, document_id, NULL AS confidence 
-FROM SFE_RAW_ENTERTAINMENT.RAW_INVOICES, document_trace 
+SELECT 'Raw Document' AS stage, document_id, NULL AS confidence
+FROM SFE_RAW_ENTERTAINMENT.RAW_INVOICES, document_trace
 WHERE RAW_INVOICES.document_id = doc_id
 
 UNION ALL
 
-SELECT 'Parsed', document_id, confidence_score 
-FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS, document_trace 
+SELECT 'Parsed', document_id, confidence_score
+FROM SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS, document_trace
 WHERE STG_PARSED_DOCUMENTS.document_id = doc_id
 
 UNION ALL
 
-SELECT 'Classified', document_id, classification_confidence 
+SELECT 'Classified', document_id, classification_confidence
 FROM SFE_STG_ENTERTAINMENT.STG_CLASSIFIED_DOCS c
-JOIN SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS p ON c.parsed_id = p.parsed_id, document_trace 
+JOIN SFE_STG_ENTERTAINMENT.STG_PARSED_DOCUMENTS p ON c.parsed_id = p.parsed_id, document_trace
 WHERE p.document_id = doc_id
 
 UNION ALL
 
-SELECT 'Insights', document_id, confidence_score 
-FROM SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS, document_trace 
+SELECT 'Insights', document_id, confidence_score
+FROM SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS, document_trace
 WHERE FCT_DOCUMENT_INSIGHTS.document_id = doc_id;
 ```
 
@@ -236,6 +236,5 @@ WHERE FCT_DOCUMENT_INSIGHTS.document_id = doc_id;
 
 ---
 
-**Questions?**  
+**Questions?**
 See [04-TROUBLESHOOTING.md](04-TROUBLESHOOTING.md) for help.
-

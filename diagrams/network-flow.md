@@ -1,8 +1,8 @@
 # Network Flow - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24 (30 days from creation)  
+**Author:** SE Community
+**Last Updated:** 2025-12-10
+**Expires:** 2026-01-09 (30 days from creation)
 **Status:** Reference Implementation
 
 ![Snowflake](https://img.shields.io/badge/Snowflake-29B5E8?style=for-the-badge&logo=snowflake&logoColor=white)
@@ -22,57 +22,57 @@ graph TB
         GitHub[GitHub Repository<br/>github.com]
         DocSource[Document Sources<br/>S3/Azure/GCS]
     end
-    
+
     subgraph "Snowflake Account - account.snowflakecomputing.com"
         subgraph "Network Layer"
             LB[Load Balancer<br/>TLS 1.2+]
             Auth[Authentication Service]
         end
-        
+
         subgraph "Compute Layer"
             WH[SFE_DOCUMENT_AI_WH<br/>XSMALL Warehouse]
             Streamlit[Streamlit Runtime<br/>Python 3.8+]
         end
-        
+
         subgraph "AI Services Layer"
             Parse[AI_PARSE_DOCUMENT<br/>Cortex Service]
             Translate[AI_TRANSLATE<br/>Cortex Service]
             Classify[AI_FILTER<br/>Cortex Service]
             Agg[AI_AGG<br/>Cortex Service]
         end
-        
+
         subgraph "Storage Layer"
             DB[SNOWFLAKE_EXAMPLE<br/>Database]
             Stage[Internal Stage<br/>@SFE_DOCUMENT_STAGE]
             GitRepo[Git Repository<br/>sfe_swiftclaw_repo]
         end
-        
+
         subgraph "Integration Layer"
             GitAPI[SFE_GIT_API_INTEGRATION<br/>Git HTTPS API]
         end
     end
-    
+
     User -->|HTTPS Query| LB
     LB -->|Authenticate| Auth
     Auth -->|Authorized| WH
     Auth -->|Authorized| Streamlit
-    
+
     DocSource -->|COPY INTO| Stage
     Stage -->|Binary Read| DB
-    
+
     WH -->|AI Function Calls| Parse
     WH -->|AI Function Calls| Translate
     WH -->|AI Function Calls| Classify
     WH -->|AI Function Calls| Agg
-    
+
     Parse -->|Write Results| DB
     Translate -->|Write Results| DB
     Classify -->|Write Results| DB
     Agg -->|Write Results| DB
-    
+
     Streamlit -->|Query Data| DB
     Streamlit -->|Render UI| User
-    
+
     GitAPI -->|HTTPS Pull| GitHub
     GitRepo -->|EXECUTE IMMEDIATE| WH
 ```
@@ -286,7 +286,6 @@ See `.cursor/DIAGRAM_CHANGELOG.md` for version history.
 
 ---
 
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24  
+**Last Updated:** 2025-11-24
+**Expires:** 2025-12-24
 **Author:** SE Community
-

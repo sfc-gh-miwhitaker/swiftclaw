@@ -1,14 +1,14 @@
 # Cleanup Guide - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24
+**Author:** SE Community
+**Last Updated:** 2025-11-24
+**Expires:** 2026-01-09
 
 ---
 
 ## Overview
 
-This demo automatically expires on **2025-12-24** (30 days from creation). This guide explains how to manually remove all demo objects before expiration if needed.
+This demo automatically expires on **2026-01-09** (30 days from creation). This guide explains how to manually remove all demo objects before expiration if needed.
 
 ---
 
@@ -132,7 +132,7 @@ DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT CASCADE;
 
 ### Error: "Insufficient privileges"
 
-**Cause:** Not using ACCOUNTADMIN role  
+**Cause:** Not using ACCOUNTADMIN role
 **Fix:**
 ```sql
 USE ROLE ACCOUNTADMIN;
@@ -141,12 +141,12 @@ USE ROLE ACCOUNTADMIN;
 
 ### Error: "Object does not exist"
 
-**Cause:** Object already deleted or never created  
+**Cause:** Object already deleted or never created
 **Fix:** This is safe to ignore - cleanup is idempotent
 
 ### Error: "Cannot drop schema with dependencies"
 
-**Cause:** External references to schema objects  
+**Cause:** External references to schema objects
 **Fix:** Use CASCADE to force deletion:
 ```sql
 DROP SCHEMA SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT CASCADE;
@@ -154,7 +154,7 @@ DROP SCHEMA SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT CASCADE;
 
 ### Error: "Warehouse is still running"
 
-**Cause:** Active queries on warehouse  
+**Cause:** Active queries on warehouse
 **Fix:** Wait for queries to complete, or suspend warehouse:
 ```sql
 ALTER WAREHOUSE SFE_DOCUMENT_AI_WH SUSPEND;
@@ -184,10 +184,10 @@ Use this checklist to ensure complete removal:
 
 After cleanup completes:
 
-✅ **Demo is fully removed** - no demo objects remain  
-✅ **Account is clean** - ready for new projects  
-✅ **No ongoing costs** - compute and storage freed  
-✅ **SNOWFLAKE_EXAMPLE database intact** - other demos unaffected  
+✅ **Demo is fully removed** - no demo objects remain
+✅ **Account is clean** - ready for new projects
+✅ **No ongoing costs** - compute and storage freed
+✅ **SNOWFLAKE_EXAMPLE database intact** - other demos unaffected
 
 ---
 
@@ -202,11 +202,10 @@ To re-deploy the demo after cleanup:
 
 ---
 
-**Questions?**  
+**Questions?**
 See [04-TROUBLESHOOTING.md](04-TROUBLESHOOTING.md) for additional help.
 
 ---
 
-**Demo Expiration:** 2025-12-24  
+**Demo Expiration:** 2026-01-09
 After this date, this repository will be archived automatically.
-

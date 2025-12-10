@@ -1,8 +1,8 @@
 # Prerequisites - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24
+**Author:** SE Community
+**Last Updated:** 2025-11-24
+**Expires:** 2026-01-09
 
 ---
 
@@ -14,7 +14,7 @@
 - **Cloud:** Any (AWS, Azure, GCP)
 - **Region:** Any
 
-**Why ACCOUNTADMIN?**  
+**Why ACCOUNTADMIN?**
 Creating API integrations requires ACCOUNTADMIN privileges. After deployment, users can operate the demo with the `SFE_DEMO_ROLE`.
 
 ### Network Access
@@ -82,11 +82,11 @@ If you plan to modify the code locally (not required for deployment):
 
 ## What's NOT Required
 
-❌ External databases or storage  
-❌ AWS/Azure/GCP accounts (Snowflake provides compute & storage)  
-❌ Docker or container orchestration  
-❌ SSH keys or VPN access  
-❌ Additional software installations  
+❌ External databases or storage
+❌ AWS/Azure/GCP accounts (Snowflake provides compute & storage)
+❌ Docker or container orchestration
+❌ SSH keys or VPN access
+❌ Additional software installations
 ❌ Command-line expertise
 
 **This demo is 100% native Snowflake** - everything runs inside your Snowflake account.
@@ -99,6 +99,5 @@ Once prerequisites are met, proceed to [02-DEPLOYMENT.md](02-DEPLOYMENT.md) for 
 
 ---
 
-**Questions?**  
+**Questions?**
 See [04-TROUBLESHOOTING.md](04-TROUBLESHOOTING.md) for common issues and solutions.
-

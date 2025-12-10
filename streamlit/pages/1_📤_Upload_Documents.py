@@ -16,14 +16,15 @@ FEATURES:
     - Support for multiple languages (EN, ES, DE, PT, RU, ZH)
 
 Author: SE Community
-Created: 2025-12-09 | Expires: 2025-12-24
+Created: 2025-12-09 | Updated: 2025-12-10 | Expires: 2026-01-09
 """
 
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
-from snowflake.snowpark.files import SnowflakeFile
 import uuid
 from datetime import datetime
+from pathlib import Path
+import tempfile
 
 # ============================================================================
 # PAGE CONFIGURATION
@@ -99,24 +100,24 @@ st.markdown("---")
 
 if uploaded_files:
     st.header("📊 Upload Status")
-    
+
     # Progress tracking
     progress_bar = st.progress(0)
     status_text = st.empty()
-    
+
     uploaded_count = 0
     failed_count = 0
-    
+
     for idx, uploaded_file in enumerate(uploaded_files):
         try:
             # Update progress
             progress = (idx + 1) / len(uploaded_files)
             progress_bar.progress(progress)
             status_text.text(f"Processing {uploaded_file.name} ({idx + 1}/{len(uploaded_files)})...")
-            
+
             # Generate unique document ID
             doc_id = f"DOC_{uuid.uuid4().hex[:12].upper()}"
-            
+
             # Determine subdirectory based on document type
             subdirectory = {
                 "INVOICE": "invoices",
@@ -124,37 +125,31 @@ if uploaded_files:
                 "CONTRACT": "contracts",
                 "OTHER": "other"
             }.get(doc_type, "other")
-            
-            # Create stage path
-            stage_path = f"@SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/{subdirectory}/{uploaded_file.name}"
-            
-            # Upload file to Snowflake stage
-            # Note: Snowpark Python doesn't directly support PUT, so we use SnowflakeFile
-            # Alternative: Write to temporary location and use SQL PUT command
-            
+
+            # Create stage path (fully qualified)
+            stage_path = f"@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/{subdirectory}/{uploaded_file.name}"
+
+            # Upload file to Snowflake stage via PUT using a temporary file
+
             # Read file content
             file_content = uploaded_file.read()
             file_size = len(file_content)
-            
-            # Upload to stage using SQL PUT (via session)
-            # Create temporary file and upload
+
             with st.spinner(f"Uploading {uploaded_file.name} to stage..."):
-                # Use PUT statement via SQL
+                with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                    tmp.write(file_content)
+                    tmp_path = Path(tmp.name)
+
                 put_sql = f"""
-                PUT 'file://{uploaded_file.name}' 
-                @SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE/{subdirectory}/ 
-                AUTO_COMPRESS=FALSE 
+                PUT 'file://{tmp_path}'
+                @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/{subdirectory}/
+                AUTO_COMPRESS=FALSE
                 OVERWRITE=TRUE
                 """
-                
-                # Note: Direct PUT from Streamlit requires file system access
-                # Better approach: Use internal stage with COPY INTO from uploaded content
-                
-                # Alternative: Insert into catalog and store reference
-                # For now, we'll register the document and provide instructions
-                
+                session.sql(put_sql).collect()
+
                 catalog_sql = f"""
-                INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG (
+                INSERT INTO SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_CATALOG (
                     document_id,
                     document_type,
                     stage_name,
@@ -169,7 +164,7 @@ if uploaded_files:
                 VALUES (
                     '{doc_id}',
                     '{doc_type}',
-                    '@DOCUMENT_STAGE',
+                    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE',
                     '{subdirectory}/{uploaded_file.name}',
                     '{uploaded_file.name}',
                     'PDF',
@@ -179,16 +174,16 @@ if uploaded_files:
                     OBJECT_CONSTRUCT(
                         'upload_method', 'Streamlit UI',
                         'uploaded_at', CURRENT_TIMESTAMP()::STRING,
-                        'file_ready', FALSE
+                        'file_ready', TRUE
                     )
                 )
                 """
-                
+
                 session.sql(catalog_sql).collect()
-            
+
             uploaded_count += 1
             st.success(f"✅ {uploaded_file.name} cataloged successfully (ID: {doc_id})")
-            
+
             # Show file info
             with st.expander(f"📄 {uploaded_file.name} Details"):
                 st.write(f"**Document ID:** {doc_id}")
@@ -196,7 +191,7 @@ if uploaded_files:
                 st.write(f"**Language:** {language}")
                 st.write(f"**Size:** {file_size:,} bytes ({file_size / 1024 / 1024:.2f} MB)")
                 st.write(f"**Stage Path:** `{subdirectory}/{uploaded_file.name}`")
-                
+
                 # Save file temporarily for manual upload
                 st.download_button(
                     label="⬇️ Download for Manual Upload",
@@ -205,18 +200,18 @@ if uploaded_files:
                     mime="application/pdf",
                     key=f"download_{doc_id}"
                 )
-        
+
         except Exception as e:
             failed_count += 1
             st.error(f"❌ Failed to process {uploaded_file.name}: {str(e)}")
-    
+
     # Final summary
     progress_bar.progress(1.0)
     status_text.text("Upload complete!")
-    
+
     st.markdown("---")
     st.subheader("📈 Upload Summary")
-    
+
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Files", len(uploaded_files))
@@ -224,49 +219,18 @@ if uploaded_files:
         st.metric("Successfully Cataloged", uploaded_count)
     with col3:
         st.metric("Failed", failed_count)
-    
+
     # Next steps
     if uploaded_count > 0:
         st.markdown("---")
-        st.warning("""
-        **📋 STEP 2: Complete Upload to Stage**
-        
-        Your documents are cataloged but need to be uploaded to the encrypted Snowflake stage.
-        """)
-        
-        st.markdown("""
-        ### Upload via Snowsight UI (Point & Click)
-        
-        1. **Open Snowsight** in a new browser tab (keep this page open)
-        
-        2. **Navigate to Stages:**
-           - Click **Data** → **Databases** → **SNOWFLAKE_EXAMPLE** 
-           - Click **SFE_RAW_ENTERTAINMENT** schema
-           - Click **Stages** in the left sidebar
-           - Click **DOCUMENT_STAGE**
-        
-        3. **Upload Files:**
-           - Click **"+ Files"** button (top right)
-           - Navigate to or create subdirectory: `{subdirectory}/`
-           - Click **"Upload Files"**
-           - Select the same PDF(s) you uploaded here
-           - Wait for upload progress bar to complete
-        
-        4. **Verify Upload:**
-           - Files should appear in the stage file listing
-           - Note the file sizes to confirm successful upload
-        """)
-        
-        st.success("""
-        ✅ After completing the Snowsight upload, run the AI processing pipeline below.
-        """)
-        
+        st.success("✅ Files uploaded to stage. Run the AI processing pipeline below.")
+
         # Provide SQL to run processing
-        with st.expander("🚀 STEP 3: Run AI Processing Pipeline"):
+        with st.expander("🚀 Run AI Processing Pipeline"):
             st.markdown("""
             Copy this script into a new Snowsight worksheet and click **Run All**:
             """)
-            
+
             st.code("""
 -- Execute AI processing pipeline
 USE ROLE ACCOUNTADMIN;
@@ -289,11 +253,11 @@ EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_pro
 EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_aggregate_insights.sql;
 
 -- 6. View results
-SELECT * FROM SFE_ANALYTICS_ENTERTAINMENT.FCT_DOCUMENT_INSIGHTS 
-ORDER BY insight_created_at DESC 
+SELECT * FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.FCT_DOCUMENT_INSIGHTS
+ORDER BY insight_created_at DESC
 LIMIT 20;
             """, language="sql")
-            
+
             st.info("⏱️ **Processing Time:** ~2-3 minutes for 6 documents")
 
 # ============================================================================
@@ -304,7 +268,7 @@ st.markdown("---")
 st.header("📋 Document Catalog")
 
 catalog_query = """
-SELECT 
+SELECT
     document_id,
     document_type,
     file_name,
@@ -314,7 +278,7 @@ SELECT
     processing_status,
     upload_date,
     last_processed_at
-FROM SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG
+FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_CATALOG
 ORDER BY upload_date DESC
 LIMIT 50
 """
@@ -323,7 +287,7 @@ catalog_df = session.sql(catalog_query).to_pandas()
 
 if not catalog_df.empty:
     st.write(f"**Showing {len(catalog_df)} most recent documents**")
-    
+
     # Format for display
     display_df = catalog_df.copy()
     display_df.columns = [
@@ -337,7 +301,7 @@ if not catalog_df.empty:
         'Uploaded',
         'Last Processed'
     ]
-    
+
     # Add status emoji
     status_emoji = {
         'PENDING': '⏳',
@@ -346,9 +310,9 @@ if not catalog_df.empty:
         'FAILED': '❌'
     }
     display_df['Status'] = display_df['Status'].apply(lambda x: f"{status_emoji.get(x, '❓')} {x}")
-    
+
     st.dataframe(display_df, use_container_width=True, height=400)
-    
+
     # Export option
     csv = catalog_df.to_csv(index=False).encode('utf-8')
     st.download_button(
@@ -373,32 +337,32 @@ with st.expander("🔍 How the AI Pipeline Works"):
     - Drag and drop PDFs in this interface
     - Files are cataloged in `DOCUMENT_CATALOG`
     - Complete upload via Snowsight UI (see instructions above)
-    
+
     **STEP 2: Parse** 🔍 (`AI_PARSE_DOCUMENT`)
     - Extracts text and layout from PDFs
     - Handles OCR for scanned documents
     - Preserves document structure and formatting
-    
+
     **STEP 3: Translate** 🌐 (`AI_TRANSLATE`)
     - Converts non-English content to English
     - Supports 50+ languages
     - Maintains context and proper nouns
-    
+
     **STEP 4: Classify** 🏷️ (`AI_CLASSIFY`)
     - Determines document type and priority
     - Categorizes by business function
     - Assigns confidence scores
-    
+
     **STEP 5: Extract** 🎯 (`AI_EXTRACT`)
     - Pulls key entities (amounts, dates, names)
     - No regex patterns required
     - Natural language understanding
-    
+
     **STEP 6: Insights** 💡
     - Aggregated results in `FCT_DOCUMENT_INSIGHTS`
     - Real-time metrics in monitoring view
     - Manual review queue for low-confidence items
-    
+
     **View results** in the main dashboard after processing completes!
     """)
 
@@ -409,13 +373,13 @@ with st.expander("🔐 Security & Encryption"):
     - Snowflake-managed encryption keys
     - Automatic encryption/decryption (transparent to AI Functions)
     - Zero configuration required
-    
+
     **Access Controls**
     - Role-based access via `SFE_DEMO_ROLE`
     - Stage read/write permissions properly configured
     - Audit trail in `DOCUMENT_PROCESSING_LOG`
     - Error tracking in `DOCUMENT_ERRORS`
-    
+
     **Best Practices for Production**
     - Use external stages (S3, Azure, GCS) with customer-managed keys
     - Implement row-level security for sensitive documents
@@ -430,12 +394,11 @@ with st.expander("🔐 Security & Encryption"):
 
 st.markdown("---")
 st.markdown("""
-**Reference Implementation Notice:**  
+**Reference Implementation Notice:**
 This upload interface demonstrates Streamlit file handling patterns. For production, consider:
 - Direct stage uploads via SnowSQL/Snow CLI for large batches
 - Snowpipe for automatic ingestion from cloud storage
 - External stages with event notifications for real-time processing
 
-**Demo Expires:** 2025-12-24 | **Author:** SE Community
+**Demo Expires:** 2026-01-09 | **Author:** SE Community
 """)
-

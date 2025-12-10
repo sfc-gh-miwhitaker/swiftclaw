@@ -1,54 +1,38 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Create Database Schemas
- * 
+ *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
- * 
+ *
  * PURPOSE:
  *   Create three-layered schema architecture for AI document processing:
- *   - SFE_RAW_ENTERTAINMENT: Raw binary document storage
- *   - SFE_STG_ENTERTAINMENT: AI processing results (parsed, translated, classified)
- *   - SFE_ANALYTICS_ENTERTAINMENT: Business insights and metrics
- * 
+ *   - SWIFTCLAW: Project schema containing raw/staging/analytics layers
+ *     - RAW_* tables: Raw binary document storage
+ *     - STG_* tables: AI processing results (parsed, translated, classified)
+ *     - FCT_*/V_*: Business insights and metrics
+ *
  * OBJECTS CREATED:
- *   - SNOWFLAKE_EXAMPLE.SFE_RAW_ENTERTAINMENT (schema)
- *   - SNOWFLAKE_EXAMPLE.SFE_STG_ENTERTAINMENT (schema)
- *   - SNOWFLAKE_EXAMPLE.SFE_ANALYTICS_ENTERTAINMENT (schema)
- * 
+ *   - SNOWFLAKE_EXAMPLE.SWIFTCLAW (schema)
+ *
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
- * 
+ *
  * Author: SE Community
- * Created: 2025-11-24 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
  ******************************************************************************/
 
 -- Set context (ensure ACCOUNTADMIN role for schema creation)
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
+USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
--- RAW LAYER: Binary Document Storage
+-- PROJECT SCHEMA
 -- ============================================================================
 
-CREATE SCHEMA IF NOT EXISTS SFE_RAW_ENTERTAINMENT
-    DATA_RETENTION_TIME_IN_DAYS = 7  -- 7-day Time Travel for recovery
-    COMMENT = 'DEMO: swiftclaw - Raw binary document storage layer | Expires: 2025-12-24 | Author: SE Community';
-
--- ============================================================================
--- STAGING LAYER: AI Processing Results
--- ============================================================================
-
-CREATE SCHEMA IF NOT EXISTS SFE_STG_ENTERTAINMENT
-    DATA_RETENTION_TIME_IN_DAYS = 1  -- 1-day Time Travel (transient data)
-    COMMENT = 'DEMO: swiftclaw - AI processing results layer (parsed, translated, classified) | Expires: 2025-12-24 | Author: SE Community';
-
--- ============================================================================
--- ANALYTICS LAYER: Business Insights
--- ============================================================================
-
-CREATE SCHEMA IF NOT EXISTS SFE_ANALYTICS_ENTERTAINMENT
-    DATA_RETENTION_TIME_IN_DAYS = 7  -- 7-day Time Travel for business data
-    COMMENT = 'DEMO: swiftclaw - Analytics layer for business insights and metrics | Expires: 2025-12-24 | Author: SE Community';
+CREATE SCHEMA IF NOT EXISTS SWIFTCLAW
+    DATA_RETENTION_TIME_IN_DAYS = 7
+    COMMENT = 'DEMO: swiftclaw - Project schema (raw/staging/analytics layers) | Expires: 2026-01-09 | Author: SE Community';
 
 -- ============================================================================
 -- DOCUMENT STAGE: Storage for AI Processing
@@ -56,18 +40,17 @@ CREATE SCHEMA IF NOT EXISTS SFE_ANALYTICS_ENTERTAINMENT
 
 -- Create internal stage for document files
 -- AI_PARSE_DOCUMENT requires documents to be on a Snowflake stage
-CREATE STAGE IF NOT EXISTS SFE_RAW_ENTERTAINMENT.DOCUMENT_STAGE
+CREATE STAGE IF NOT EXISTS SWIFTCLAW.DOCUMENT_STAGE
     ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')  -- Server-side encryption
     DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'DEMO: swiftclaw - Internal stage for document files (PDF, DOCX, etc.) | Expires: 2025-12-24 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Internal stage for document files (PDF, DOCX, etc.) | Expires: 2026-01-09 | Author: SE Community';
 
 -- Verify stage created successfully
-SHOW STAGES IN SCHEMA SFE_RAW_ENTERTAINMENT;
+SHOW STAGES IN SCHEMA SWIFTCLAW;
 
 -- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 
--- Verify all SFE_* schemas created successfully
-SHOW SCHEMAS LIKE 'SFE_%' IN DATABASE SNOWFLAKE_EXAMPLE;
-
+-- Verify project schema created successfully
+SHOW SCHEMAS LIKE 'SWIFTCLAW' IN DATABASE SNOWFLAKE_EXAMPLE;

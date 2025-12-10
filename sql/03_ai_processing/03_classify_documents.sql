@@ -1,34 +1,34 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Classify Documents with AI_CLASSIFY
- * 
+ *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
- * 
+ *
  * PURPOSE:
  *   Use Snowflake Cortex AI_CLASSIFY to categorize documents by type,
  *   priority level, and business category using natural language categories
  *   with enhanced descriptions and examples.
- * 
+ *
  * REQUIREMENTS:
  *   - Parsed documents in STG_PARSED_DOCUMENTS
  *   - SNOWFLAKE.CORTEX_USER database role granted
- * 
+ *
  * AI FUNCTION: AI_CLASSIFY
  *   Syntax: AI_CLASSIFY(text, categories_array, options)
  *   Features: Multi-label, category descriptions, examples, task descriptions
  *   Output: JSON with label, confidence, and optional explanations
- * 
+ *
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
- * 
+ *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-09 | Expires: 2025-12-24
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
  ******************************************************************************/
 
 -- Set context
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
-USE SCHEMA SFE_STG_ENTERTAINMENT;
+USE SCHEMA SWIFTCLAW;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
@@ -38,7 +38,7 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- Classify documents using AI_CLASSIFY with detailed category definitions
 -- This enhanced approach improves accuracy by providing context
 
-INSERT INTO STG_CLASSIFIED_DOCS (
+INSERT INTO SWIFTCLAW.STG_CLASSIFIED_DOCS (
     classification_id,
     parsed_id,
     document_type,
@@ -126,15 +126,15 @@ FROM (
             ],
             {'task_description': 'Determine the urgency and priority level of this business document based on its content and context'}
         ) AS priority_classification
-    FROM STG_PARSED_DOCUMENTS parsed
-    LEFT JOIN STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
+    FROM SWIFTCLAW.STG_PARSED_DOCUMENTS parsed
+    LEFT JOIN SWIFTCLAW.STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
     WHERE parsed.parsed_content:text::STRING IS NOT NULL
     -- Limit to prevent timeout
     LIMIT 100
 ) classifications;
 
 -- Log classification attempts
-INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
+INSERT INTO SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG (
     log_id,
     document_id,
     processing_step,
@@ -150,12 +150,12 @@ SELECT
     classified.classified_at AS started_at,
     classified.classified_at AS completed_at,
     UNIFORM(1, 5, RANDOM()) AS duration_seconds,  -- Simulated
-    CASE 
+    CASE
         WHEN classified.document_type IS NOT NULL THEN 'SUCCESS'
         ELSE 'FAILED'
     END AS status
-FROM STG_CLASSIFIED_DOCS classified
-JOIN STG_PARSED_DOCUMENTS parsed ON classified.parsed_id = parsed.parsed_id;
+FROM SWIFTCLAW.STG_CLASSIFIED_DOCS classified
+JOIN SWIFTCLAW.STG_PARSED_DOCUMENTS parsed ON classified.parsed_id = parsed.parsed_id;
 
 -- ============================================================================
 -- BASIC CLASSIFICATION (Simpler, Faster Alternative)
@@ -210,19 +210,19 @@ WHERE label.value:confidence::FLOAT > 0.5;  -- Filter by confidence threshold
 -- ============================================================================
 
 -- Classification distribution
-SELECT 
+SELECT
     document_type,
     priority_level,
     business_category,
     COUNT(*) AS document_count,
     ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percentage,
     AVG(classification_confidence) AS avg_confidence
-FROM STG_CLASSIFIED_DOCS
+FROM SWIFTCLAW.STG_CLASSIFIED_DOCS
 GROUP BY document_type, priority_level, business_category
 ORDER BY document_count DESC;
 
 -- High-priority documents requiring attention
-SELECT 
+SELECT
     classified.classification_id,
     parsed.document_id,
     classified.document_type,
@@ -230,14 +230,14 @@ SELECT
     classified.classification_confidence,
     -- Preview of document content
     SUBSTR(parsed.parsed_content:text::STRING, 1, 200) AS content_preview
-FROM STG_CLASSIFIED_DOCS classified
-JOIN STG_PARSED_DOCUMENTS parsed ON classified.parsed_id = parsed.parsed_id
+FROM SWIFTCLAW.STG_CLASSIFIED_DOCS classified
+JOIN SWIFTCLAW.STG_PARSED_DOCUMENTS parsed ON classified.parsed_id = parsed.parsed_id
 WHERE classified.priority_level = 'High'
 ORDER BY classified.classification_confidence DESC
 LIMIT 20;
 
 -- Confidence score analysis
-SELECT 
+SELECT
     document_type,
     COUNT(*) AS document_count,
     ROUND(AVG(classification_confidence), 4) AS avg_confidence,
@@ -245,7 +245,7 @@ SELECT
     ROUND(MAX(classification_confidence), 4) AS max_confidence,
     -- Flag low-confidence classifications
     SUM(CASE WHEN classification_confidence < 0.70 THEN 1 ELSE 0 END) AS low_confidence_count
-FROM STG_CLASSIFIED_DOCS
+FROM SWIFTCLAW.STG_CLASSIFIED_DOCS
 GROUP BY document_type
 ORDER BY avg_confidence DESC;
 

@@ -1,8 +1,8 @@
 # Auth Flow - AI Document Processing Demo
 
-**Author:** SE Community  
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24 (30 days from creation)  
+**Author:** SE Community
+**Last Updated:** 2025-12-10
+**Expires:** 2026-01-09 (30 days from creation)
 **Status:** Reference Implementation
 
 ![Snowflake](https://img.shields.io/badge/Snowflake-29B5E8?style=for-the-badge&logo=snowflake&logoColor=white)
@@ -25,10 +25,10 @@ sequenceDiagram
     participant DB as SNOWFLAKE_EXAMPLE DB
     participant AI as Cortex AI Services
     participant Streamlit as Streamlit App
-    
+
     User->>Snowsight: Navigate to snowflakecomputing.com
     Snowsight->>Auth: Request authentication
-    
+
     alt Username/Password Auth
         User->>Auth: Submit credentials
         Auth->>Auth: Validate password hash
@@ -39,50 +39,50 @@ sequenceDiagram
         User->>Auth: Submit JWT signed with private key
         Auth->>Auth: Verify signature with public key
     end
-    
+
     Auth-->>Snowsight: Authentication Success + Session Token
-    
+
     User->>Snowsight: Request to view Streamlit app
     Snowsight->>RBAC: Check user roles
     RBAC-->>Snowsight: Roles: [SFE_DEMO_ROLE]
-    
+
     Snowsight->>RBAC: Verify USAGE on SFE_DOCUMENT_AI_WH
     RBAC-->>Snowsight: ✓ Access Granted
-    
+
     Snowsight->>WH: Resume warehouse (if suspended)
     WH-->>Snowsight: Warehouse Active
-    
+
     Snowsight->>Streamlit: Load app with session context
     Streamlit-->>User: Render dashboard UI
-    
+
     User->>Streamlit: Click "View Invoices" button
     Streamlit->>RBAC: Check SELECT privilege on FCT_DOCUMENT_INSIGHTS
     RBAC-->>Streamlit: ✓ Privilege Granted
-    
+
     Streamlit->>WH: Execute: SELECT * FROM FCT_DOCUMENT_INSIGHTS
     WH->>DB: Read data from table
     DB-->>WH: Return rows
     WH-->>Streamlit: Query results
     Streamlit-->>User: Display invoice data in table
-    
+
     User->>Streamlit: Filter by "High Priority" documents
     Streamlit->>WH: Execute: SELECT * WHERE priority_level='High'
     WH->>DB: Read filtered data
     DB-->>WH: Return filtered rows
     WH-->>Streamlit: Query results
     Streamlit-->>User: Display filtered invoices
-    
+
     User->>Streamlit: Click "Translate Document" button
     Streamlit->>RBAC: Check USAGE on Cortex AI Functions
     RBAC-->>Streamlit: ✓ Access Granted (via SFE_DEMO_ROLE)
-    
+
     Streamlit->>WH: Execute: SELECT AI_TRANSLATE(...)
     WH->>AI: Call AI_TRANSLATE function
     AI->>AI: Translate text (serverless)
     AI-->>WH: Translated content
     WH-->>Streamlit: Translation result
     Streamlit-->>User: Display translated text
-    
+
     User->>Snowsight: Logout
     Snowsight->>Auth: Invalidate session token
     Auth-->>Snowsight: Session terminated
@@ -327,7 +327,7 @@ ALTER ACCOUNT SET CLIENT_SESSION_KEEP_ALIVE_HEARTBEAT_FREQUENCY = 3600; -- 1 hou
 
 ```sql
 -- View recent login attempts
-SELECT 
+SELECT
     user_name,
     event_timestamp,
     event_type,
@@ -345,7 +345,7 @@ ORDER BY event_timestamp DESC;
 
 ```sql
 -- View recent data access by user
-SELECT 
+SELECT
     user_name,
     query_start_time,
     direct_objects_accessed,
@@ -361,7 +361,7 @@ ORDER BY query_start_time DESC;
 
 ```sql
 -- View recent privilege grants/revokes
-SELECT 
+SELECT
     created_on,
     modified_on,
     privilege,
@@ -443,7 +443,6 @@ See `.cursor/DIAGRAM_CHANGELOG.md` for version history.
 
 ---
 
-**Last Updated:** 2025-11-24  
-**Expires:** 2025-12-24  
+**Last Updated:** 2025-11-24
+**Expires:** 2025-12-24
 **Author:** SE Community
-

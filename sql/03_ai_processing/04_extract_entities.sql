@@ -1,33 +1,33 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Extract Entities with AI_EXTRACT
- * 
+ *
  * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
- * 
+ *
  * PURPOSE:
  *   Use Snowflake Cortex AI_EXTRACT to intelligently extract specific entities
  *   from documents without regex patterns. Demonstrates semantic entity
  *   extraction for invoices, contracts, and royalty statements.
- * 
+ *
  * REQUIREMENTS:
  *   - Parsed documents in STG_PARSED_DOCUMENTS
  *   - SNOWFLAKE.CORTEX_USER database role granted
- * 
+ *
  * AI FUNCTION: AI_EXTRACT
  *   Syntax: AI_EXTRACT(text, entity_definitions)
  *   Benefits: No regex maintenance, handles format variations, semantic understanding
- * 
+ *
  * CLEANUP:
  *   See sql/99_cleanup/teardown_all.sql
- * 
+ *
  * Author: SE Community
- * Created: 2025-12-09 | Expires: 2025-12-24
+ * Created: 2025-12-09 | Updated: 2025-12-10 | Expires: 2026-01-09
  ******************************************************************************/
 
 -- Set context
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
-USE SCHEMA SFE_STG_ENTERTAINMENT;
+USE SCHEMA SWIFTCLAW;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
@@ -35,7 +35,7 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- ============================================================================
 
 -- Extract structured data from invoice documents
-INSERT INTO STG_EXTRACTED_ENTITIES (
+INSERT INTO SWIFTCLAW.STG_EXTRACTED_ENTITIES (
     extraction_id,
     parsed_id,
     entity_type,
@@ -66,9 +66,9 @@ FROM (
                 'currency': 'The currency code for the amounts (USD, EUR, etc.)'
             }
         ) AS extracted_fields
-    FROM STG_PARSED_DOCUMENTS parsed
-    LEFT JOIN STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
-    JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+    FROM SWIFTCLAW.STG_PARSED_DOCUMENTS parsed
+    LEFT JOIN SWIFTCLAW.STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
+    JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
     WHERE catalog.document_type = 'INVOICE'
     AND parsed.parsed_content:text::STRING IS NOT NULL
     LIMIT 50
@@ -80,7 +80,7 @@ LATERAL FLATTEN(input => extractions.extracted_fields) entity;
 -- ============================================================================
 
 -- Extract financial data from royalty statements
-INSERT INTO STG_EXTRACTED_ENTITIES (
+INSERT INTO SWIFTCLAW.STG_EXTRACTED_ENTITIES (
     extraction_id,
     parsed_id,
     entity_type,
@@ -110,9 +110,9 @@ FROM (
                 'payment_due_date': 'The date when royalty payment is due'
             }
         ) AS extracted_fields
-    FROM STG_PARSED_DOCUMENTS parsed
-    LEFT JOIN STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
-    JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+    FROM SWIFTCLAW.STG_PARSED_DOCUMENTS parsed
+    LEFT JOIN SWIFTCLAW.STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
+    JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
     WHERE catalog.document_type = 'ROYALTY_STATEMENT'
     AND parsed.parsed_content:text::STRING IS NOT NULL
     LIMIT 50
@@ -124,7 +124,7 @@ LATERAL FLATTEN(input => extractions.extracted_fields) entity;
 -- ============================================================================
 
 -- Extract key contract terms and parties
-INSERT INTO STG_EXTRACTED_ENTITIES (
+INSERT INTO SWIFTCLAW.STG_EXTRACTED_ENTITIES (
     extraction_id,
     parsed_id,
     entity_type,
@@ -155,9 +155,9 @@ FROM (
                 'term_years': 'The duration or term of the contract in years'
             }
         ) AS extracted_fields
-    FROM STG_PARSED_DOCUMENTS parsed
-    LEFT JOIN STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
-    JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+    FROM SWIFTCLAW.STG_PARSED_DOCUMENTS parsed
+    LEFT JOIN SWIFTCLAW.STG_TRANSLATED_CONTENT trans ON parsed.parsed_id = trans.parsed_id
+    JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
     WHERE catalog.document_type = 'CONTRACT'
     AND parsed.parsed_content:text::STRING IS NOT NULL
     LIMIT 50
@@ -165,7 +165,7 @@ FROM (
 LATERAL FLATTEN(input => extractions.extracted_fields) entity;
 
 -- Log extraction attempts
-INSERT INTO SFE_RAW_ENTERTAINMENT.DOCUMENT_PROCESSING_LOG (
+INSERT INTO SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG (
     log_id,
     document_id,
     processing_step,
@@ -181,37 +181,37 @@ SELECT
     extracted.extracted_at AS started_at,
     extracted.extracted_at AS completed_at,
     UNIFORM(2, 8, RANDOM()) AS duration_seconds,
-    CASE 
+    CASE
         WHEN extracted.entity_value IS NOT NULL THEN 'SUCCESS'
         ELSE 'FAILED'
     END AS status
-FROM STG_EXTRACTED_ENTITIES extracted
-JOIN STG_PARSED_DOCUMENTS parsed ON extracted.parsed_id = parsed.parsed_id;
+FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES extracted
+JOIN SWIFTCLAW.STG_PARSED_DOCUMENTS parsed ON extracted.parsed_id = parsed.parsed_id;
 
 -- ============================================================================
 -- VERIFICATION & ANALYTICS
 -- ============================================================================
 
 -- Entity extraction summary by type
-SELECT 
+SELECT
     entity_type,
     COUNT(*) AS extractions_count,
     COUNT(DISTINCT parsed_id) AS documents_processed,
     AVG(extraction_confidence) AS avg_confidence,
     MIN(extraction_confidence) AS min_confidence
-FROM STG_EXTRACTED_ENTITIES
+FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES
 GROUP BY entity_type
 ORDER BY extractions_count DESC;
 
 -- Sample extracted entities
-SELECT 
+SELECT
     catalog.document_type,
     entity.entity_type,
     entity.entity_value,
     entity.extraction_confidence
-FROM STG_EXTRACTED_ENTITIES entity
-JOIN STG_PARSED_DOCUMENTS parsed ON entity.parsed_id = parsed.parsed_id
-JOIN SFE_RAW_ENTERTAINMENT.DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
+FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES entity
+JOIN SWIFTCLAW.STG_PARSED_DOCUMENTS parsed ON entity.parsed_id = parsed.parsed_id
+JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
 LIMIT 20;
 
 -- Invoice-specific entity analysis
@@ -222,16 +222,16 @@ SELECT
     MAX(CASE WHEN entity_type = 'total_amount' THEN entity_value END) AS total_amount,
     MAX(CASE WHEN entity_type = 'invoice_date' THEN entity_value END) AS invoice_date,
     MAX(CASE WHEN entity_type = 'payment_terms' THEN entity_value END) AS payment_terms
-FROM STG_EXTRACTED_ENTITIES
+FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES
 WHERE entity_type IN ('invoice_number', 'vendor_name', 'total_amount', 'invoice_date', 'payment_terms')
 GROUP BY parsed_id
 LIMIT 10;
 
 -- Check extraction failures
-SELECT 
+SELECT
     COUNT(DISTINCT parsed_id) AS documents_processed,
     COUNT(DISTINCT CASE WHEN entity_value IS NULL THEN parsed_id END) AS failed_extractions
-FROM STG_EXTRACTED_ENTITIES;
+FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES;
 
 SELECT 'Entity extraction complete - check STG_EXTRACTED_ENTITIES for results' AS final_status;
 
@@ -291,4 +291,3 @@ FOR PRODUCTION DEPLOYMENT:
    - Feed entities into downstream analytics
    - Export entities to ERP/CRM systems
 */
-

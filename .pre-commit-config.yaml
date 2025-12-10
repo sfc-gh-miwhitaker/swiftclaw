@@ -1,0 +1,21 @@
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=5000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: check-cursor-files
+        name: Block .cursor/ files
+        entry: bash -c 'git diff --cached --name-only | grep -q "^\.cursor/" && echo "ERROR - .cursor/ files must not be committed" && exit 1 || exit 0'
+        language: system
+        pass_filenames: false
