@@ -50,7 +50,7 @@ INSERT INTO SWIFTCLAW.STG_CLASSIFIED_DOCS (
 )
 SELECT
     UUID_STRING() AS classification_id,
-    parsed.parsed_id,
+    parsed_id,
     -- Extract primary document type classification
     doc_classification:label::STRING AS document_type,
     -- Extract priority level (if available)
