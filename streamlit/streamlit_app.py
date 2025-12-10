@@ -154,7 +154,7 @@ SELECT
     currency,
     document_date,
     vendor_territory,
-    confidence_score,
+    overall_confidence_score AS confidence_score,
     requires_manual_review,
     metadata:priority_level::STRING AS priority_level,
     metadata:business_category::STRING AS business_category,
@@ -314,7 +314,7 @@ SELECT
     document_type,
     total_amount,
     vendor_territory,
-    confidence_score,
+    overall_confidence_score AS confidence_score,
     metadata:priority_level::STRING AS priority_level,
     insight_created_at
 FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.FCT_DOCUMENT_INSIGHTS
@@ -325,7 +325,7 @@ ORDER BY
         WHEN 'Medium' THEN 2
         ELSE 3
     END,
-    confidence_score ASC
+    overall_confidence_score ASC
 LIMIT 50
 """
 
