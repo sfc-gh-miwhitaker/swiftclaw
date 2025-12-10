@@ -39,12 +39,6 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- ============================================================================
 
 -- Generate 10 sample invoices with realistic content
-WITH invoice_gen AS (
-    SELECT
-        SEQ4() AS seq,
-        RANDOM() AS rnd
-    FROM TABLE(GENERATOR(ROWCOUNT => 10))
-)
 INSERT INTO RAW_DOCUMENT_CATALOG (
     document_id,
     document_type,
@@ -76,7 +70,12 @@ SELECT
         'payment_terms', 'Net 30',
         'generated_for_demo', TRUE
     ) AS metadata
-FROM invoice_gen;
+FROM (
+    SELECT
+        SEQ4() AS seq,
+        RANDOM() AS rnd
+    FROM TABLE(GENERATOR(ROWCOUNT => 10))
+) invoice_gen;
 
 -- Create sample invoice content files
 -- NOTE: In production, you would PUT actual PDF files here
@@ -88,12 +87,6 @@ SELECT '10 invoice documents cataloged' AS status;
 -- SAMPLE DOCUMENT GENERATION: Royalty Statements
 -- ============================================================================
 
-WITH royalty_gen AS (
-    SELECT
-        SEQ4() AS seq,
-        RANDOM() AS rnd
-    FROM TABLE(GENERATOR(ROWCOUNT => 5))
-)
 INSERT INTO RAW_DOCUMENT_CATALOG (
     document_id,
     document_type,
@@ -125,7 +118,12 @@ SELECT
         'currency', 'USD',
         'generated_for_demo', TRUE
     ) AS metadata
-FROM royalty_gen;
+FROM (
+    SELECT
+        SEQ4() AS seq,
+        RANDOM() AS rnd
+    FROM TABLE(GENERATOR(ROWCOUNT => 5))
+) royalty_gen;
 
 SELECT '5 royalty statement documents cataloged' AS status;
 
@@ -133,12 +131,6 @@ SELECT '5 royalty statement documents cataloged' AS status;
 -- SAMPLE DOCUMENT GENERATION: Contracts
 -- ============================================================================
 
-WITH contract_gen AS (
-    SELECT
-        SEQ4() AS seq,
-        RANDOM() AS rnd
-    FROM TABLE(GENERATOR(ROWCOUNT => 5))
-)
 INSERT INTO RAW_DOCUMENT_CATALOG (
     document_id,
     document_type,
@@ -170,7 +162,12 @@ SELECT
         'territory', ARRAY_CONSTRUCT('Worldwide', 'North America', 'Europe', 'Asia', 'Latin America')[UNIFORM(0, 4, rnd)],
         'generated_for_demo', TRUE
     ) AS metadata
-FROM contract_gen;
+FROM (
+    SELECT
+        SEQ4() AS seq,
+        RANDOM() AS rnd
+    FROM TABLE(GENERATOR(ROWCOUNT => 5))
+) contract_gen;
 
 SELECT '5 contract documents cataloged' AS status;
 
