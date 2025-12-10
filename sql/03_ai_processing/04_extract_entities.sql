@@ -45,7 +45,7 @@ INSERT INTO SWIFTCLAW.STG_EXTRACTED_ENTITIES (
 )
 SELECT
     UUID_STRING() AS extraction_id,
-    parsed.parsed_id,
+    extractions.parsed_id,
     entity.key::STRING AS entity_type,
     entity.value::STRING AS entity_value,
     UNIFORM(0.85, 0.98, RANDOM()) AS extraction_confidence,  -- Simulated for demo
@@ -90,7 +90,7 @@ INSERT INTO SWIFTCLAW.STG_EXTRACTED_ENTITIES (
 )
 SELECT
     UUID_STRING() AS extraction_id,
-    parsed.parsed_id,
+    extractions.parsed_id,
     entity.key::STRING AS entity_type,
     entity.value::STRING AS entity_value,
     UNIFORM(0.80, 0.95, RANDOM()) AS extraction_confidence,
@@ -134,7 +134,7 @@ INSERT INTO SWIFTCLAW.STG_EXTRACTED_ENTITIES (
 )
 SELECT
     UUID_STRING() AS extraction_id,
-    parsed.parsed_id,
+    extractions.parsed_id,
     entity.key::STRING AS entity_type,
     entity.value::STRING AS entity_value,
     UNIFORM(0.85, 0.98, RANDOM()) AS extraction_confidence,
