@@ -217,8 +217,6 @@ FROM SWIFTCLAW.RAW_DOCUMENT_ERRORS
 WHERE error_step = 'PARSE'
 GROUP BY error_message;
 
-SELECT 'Document parsing complete - check STG_PARSED_DOCUMENTS for results' AS final_status;
-
 -- ============================================================================
 -- ADVANCED: Parse with page splitting
 -- ============================================================================

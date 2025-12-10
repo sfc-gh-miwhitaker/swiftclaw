@@ -225,5 +225,3 @@ SELECT
     failed_documents,
     completion_percentage
 FROM V_PROCESSING_METRICS;
-
-SELECT 'Monitoring view ready for Streamlit dashboard consumption' AS final_status;

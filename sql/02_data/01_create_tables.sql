@@ -84,8 +84,6 @@ CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_ERRORS (
 )
 COMMENT = 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2026-01-09 | Author: SE Community';
 
-SELECT 'Raw layer tables created: 3 tables' AS status;
-
 -- ============================================================================
 -- STAGING LAYER: AI Processing Results
 -- ============================================================================
@@ -140,8 +138,6 @@ CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_EXTRACTED_ENTITIES (
 )
 COMMENT = 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2026-01-09 | Author: SE Community';
 
-SELECT 'Staging layer tables created: 4 transient tables' AS status;
-
 -- ============================================================================
 -- ANALYTICS LAYER: Business Insights
 -- ============================================================================
@@ -168,7 +164,5 @@ COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2026-01-09 
 -- VERIFICATION
 -- ============================================================================
 
--- Verify all tables created successfully
+-- Verify all tables created (8 expected)
 SHOW TABLES IN SCHEMA SWIFTCLAW;
-
-SELECT 'All tables created successfully - 8 total tables' AS final_status;

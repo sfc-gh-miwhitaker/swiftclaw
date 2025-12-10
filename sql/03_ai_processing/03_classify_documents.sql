@@ -249,8 +249,6 @@ FROM SWIFTCLAW.STG_CLASSIFIED_DOCS
 GROUP BY document_type
 ORDER BY avg_confidence DESC;
 
-SELECT 'Classification complete - check STG_CLASSIFIED_DOCS for results' AS final_status;
-
 -- ============================================================================
 -- PRODUCTION NOTES
 -- ============================================================================

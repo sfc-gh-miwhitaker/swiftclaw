@@ -208,8 +208,6 @@ FROM SWIFTCLAW.STG_TRANSLATED_CONTENT
 WHERE translated_text IS NULL
 OR LENGTH(translated_text) = 0;
 
-SELECT 'Translation processing complete - check STG_TRANSLATED_CONTENT for results' AS final_status;
-
 -- ============================================================================
 -- ADVANCED: Multi-language Translation Chain
 -- ============================================================================

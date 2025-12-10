@@ -197,8 +197,7 @@ COPY FILES
     FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/pdfs/
     PATTERN = 'bridge_.*\.pdf';
 
--- Verify files copied successfully
-SELECT 'Sample PDFs copied from Git repository to internal stage' AS status;
+-- Verify files copied successfully (LS shows actual file listing)
 LS @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/ PATTERN = '.*\.pdf';
 
 -- ============================================================================
@@ -277,79 +276,46 @@ GRANT USAGE ON STREAMLIT SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD TO R
 -- Grant role to SYSADMIN (for easier management)
 GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
 
--- ============================================================================
--- SECTION 11: DEPLOYMENT COMPLETE
--- ============================================================================
+/*******************************************************************************
+ * SECTION 11: DEPLOYMENT COMPLETE
+ *******************************************************************************
+ *
+ * Objects Created:
+ *   - API Integration: SFE_GIT_API_INTEGRATION
+ *   - Database: SNOWFLAKE_EXAMPLE
+ *   - Warehouse: SFE_DOCUMENT_AI_WH (XSMALL)
+ *   - Git Repository: sfe_swiftclaw_repo
+ *   - Schema: SWIFTCLAW (raw/staging/analytics tables)
+ *   - Stage: DOCUMENT_STAGE (for file uploads)
+ *   - Tables: 8 tables (catalog, logs, staging, analytics)
+ *   - AI Processing: PARSE → TRANSLATE → CLASSIFY → EXTRACT pipeline
+ *   - Streamlit: SFE_DOCUMENT_DASHBOARD
+ *   - Role: SFE_DEMO_ROLE
+ *
+ * Next Steps:
+ *   1. Upload documents (optional):
+ *      PUT file:///*.pdf @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;
+ *   2. Switch role: USE ROLE SFE_DEMO_ROLE;
+ *   3. Open Streamlit: Home → Streamlit → SFE_DOCUMENT_DASHBOARD
+ *   4. View insights: SELECT * FROM SWIFTCLAW.FCT_DOCUMENT_INSIGHTS LIMIT 10;
+ *   5. View metrics: SELECT * FROM SWIFTCLAW.V_PROCESSING_METRICS;
+ *   6. Check document catalog: SELECT * FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG;
+ *
+ * Documentation:
+ *   - README: https://github.com/sfc-gh-miwhitaker/swiftclaw/blob/main/README.md
+ *   - Usage Guide: docs/02-USAGE.md
+ *   - Troubleshooting: docs/04-TROUBLESHOOTING.md
+ *
+ * Cleanup (when finished):
+ *   EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/99_cleanup/teardown_all.sql;
+ *   -- Or manual: DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW CASCADE;
+ *   --            DROP WAREHOUSE IF EXISTS SFE_DOCUMENT_AI_WH;
+ *
+ * Demo Expires: 2026-01-09 (30 days from creation)
+ ******************************************************************************/
 
-SELECT '========================================' AS message
-UNION ALL
-SELECT 'DEPLOYMENT COMPLETE!' AS message
-UNION ALL
-SELECT '========================================' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'Objects Created:' AS message
-UNION ALL
-SELECT '  - API Integration: SFE_GIT_API_INTEGRATION' AS message
-UNION ALL
-SELECT '  - Database: SNOWFLAKE_EXAMPLE' AS message
-UNION ALL
-SELECT '  - Warehouse: SFE_DOCUMENT_AI_WH (XSMALL)' AS message
-UNION ALL
-SELECT '  - Git Repository: sfe_swiftclaw_repo' AS message
-UNION ALL
-SELECT '  - Schema: SWIFTCLAW (raw/staging/analytics tables)' AS message
-UNION ALL
-SELECT '  - Stage: DOCUMENT_STAGE (for file uploads)' AS message
-UNION ALL
-SELECT '  - Tables: 8 tables (catalog, logs, staging, analytics)' AS message
-UNION ALL
-SELECT '  - AI Processing: PARSE → TRANSLATE → CLASSIFY → EXTRACT pipeline' AS message
-UNION ALL
-SELECT '  - Streamlit: SFE_DOCUMENT_DASHBOARD' AS message
-UNION ALL
-SELECT '  - Role: SFE_DEMO_ROLE' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'Next Steps:' AS message
-UNION ALL
-SELECT '  1. Upload documents (optional): PUT file:///*.pdf @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;' AS message
-UNION ALL
-SELECT '  2. Switch role: USE ROLE SFE_DEMO_ROLE;' AS message
-UNION ALL
-SELECT '  3. Open Streamlit: Home → Streamlit → SFE_DOCUMENT_DASHBOARD' AS message
-UNION ALL
-SELECT '  4. View insights: SELECT * FROM SWIFTCLAW.FCT_DOCUMENT_INSIGHTS LIMIT 10;' AS message
-UNION ALL
-SELECT '  5. View metrics: SELECT * FROM SWIFTCLAW.V_PROCESSING_METRICS;' AS message
-UNION ALL
-SELECT '  6. Check document catalog: SELECT * FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG;' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'Documentation:' AS message
-UNION ALL
-SELECT '  - README: https://github.com/sfc-gh-miwhitaker/swiftclaw/blob/main/README.md' AS message
-UNION ALL
-SELECT '  - Usage Guide: docs/02-USAGE.md' AS message
-UNION ALL
-SELECT '  - Troubleshooting: docs/04-TROUBLESHOOTING.md' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'Cleanup (when finished):' AS message
-UNION ALL
-SELECT '  - Run: @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/99_cleanup/teardown_all.sql' AS message
-UNION ALL
-SELECT '  - Or manual: DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW CASCADE; DROP WAREHOUSE IF EXISTS SFE_DOCUMENT_AI_WH;' AS message
-UNION ALL
-SELECT '' AS message
-UNION ALL
-SELECT 'Demo Expires: 2026-01-09 (30 days from creation)' AS message
-UNION ALL
-SELECT '========================================' AS message;
+-- Verify deployment: Show created objects
+SHOW STREAMLITS LIKE 'SFE_DOCUMENT%' IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW;
 
 -- ============================================================================
 -- TROUBLESHOOTING

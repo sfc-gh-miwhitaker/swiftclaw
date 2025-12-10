@@ -233,8 +233,6 @@ SELECT
     COUNT(DISTINCT CASE WHEN entity_value IS NULL THEN parsed_id END) AS failed_extractions
 FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES;
 
-SELECT 'Entity extraction complete - check STG_EXTRACTED_ENTITIES for results' AS final_status;
-
 -- ============================================================================
 -- PRODUCTION NOTES
 -- ============================================================================

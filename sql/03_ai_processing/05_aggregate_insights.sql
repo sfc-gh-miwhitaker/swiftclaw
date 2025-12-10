@@ -225,5 +225,3 @@ FROM SWIFTCLAW.FCT_DOCUMENT_INSIGHTS
 WHERE insight_created_at >= DATEADD('day', -30, CURRENT_TIMESTAMP())
 GROUP BY processing_date, document_type
 ORDER BY processing_date DESC, document_type;
-
-SELECT 'Aggregation complete - Business insights ready for consumption' AS final_status;
