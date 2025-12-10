@@ -9,7 +9,7 @@
  *   - SWIFTCLAW: Project schema containing raw/staging/analytics layers
  *     - RAW_* tables: Raw binary document storage
  *     - STG_* tables: AI processing results (parsed, translated, classified)
- *     - FCT_*/V_*: Business insights and metrics
+ *     - FCT_*, V_*: Business insights and metrics
  *
  * OBJECTS CREATED:
  *   - SNOWFLAKE_EXAMPLE.SWIFTCLAW (schema)
