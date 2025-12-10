@@ -52,7 +52,7 @@ AND catalog.file_format = 'PDF'  -- Only process PDFs
 QUALIFY ROW_NUMBER() OVER (ORDER BY catalog.document_id) <= 50;  -- Batch size for demo
 
 -- Show documents to be processed
-SELECT COUNT(*) || ' documents queued for AI parsing' AS status FROM TMP_PENDING_PARSE_DOCS;
+SELECT COUNT(*) AS documents_queued FROM TMP_PENDING_PARSE_DOCS;
 
 -- Pre-compute AI_PARSE_DOCUMENT results
 -- TO_FILE() works with both internal and external stages

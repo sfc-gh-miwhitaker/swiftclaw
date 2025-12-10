@@ -186,18 +186,22 @@ GRANT READ, WRITE ON STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE TO ROLE SF
 -- This enables AI_PARSE_DOCUMENT to process real documents automatically
 
 -- Copy generated sample documents (invoices, royalties, contracts)
+-- NOTE: PATTERN matches full path from stage root, so must start with .*
 COPY FILES
     INTO @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/generated/
     FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/pdfs/generated/
-    PATTERN = '.*\.pdf';
+    PATTERN = '.*\.pdf'
+    DETAILED_OUTPUT = TRUE;
 
 -- Copy bridge translation demo documents
+-- NOTE: PATTERN matches full path, so must start with .*
 COPY FILES
     INTO @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/
     FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/pdfs/
-    PATTERN = 'bridge_.*\.pdf';
+    PATTERN = '.*bridge_.*\.pdf'
+    DETAILED_OUTPUT = TRUE;
 
--- Verify files copied successfully (LS shows actual file listing)
+-- Verify files copied to internal stage
 LS @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/ PATTERN = '.*\.pdf';
 
 -- ============================================================================

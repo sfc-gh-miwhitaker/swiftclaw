@@ -139,8 +139,7 @@ GROUP BY
     trans.translation_id,
     trans.translation_confidence;
 
-SELECT COUNT(*) || ' document insights aggregated' AS status
-FROM SWIFTCLAW.FCT_DOCUMENT_INSIGHTS;
+SELECT COUNT(*) AS insights_aggregated FROM SWIFTCLAW.FCT_DOCUMENT_INSIGHTS;
 
 -- ============================================================================
 -- BUSINESS INTELLIGENCE QUERIES
