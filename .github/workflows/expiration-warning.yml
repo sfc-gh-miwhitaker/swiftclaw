@@ -1,0 +1,113 @@
+name: Demo Expiration Warning
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC to check for approaching expiration
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  check-expiration-warning:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check expiration date and calculate days remaining
+        id: check_date
+        run: |
+          # Extract expiration date from deploy_all.sql
+          EXPIRATION_DATE=$(grep -oP 'EXPIRES:\s*\K\d{4}-\d{2}-\d{2}' deploy_all.sql | head -1)
+          CURRENT_DATE=$(date -u +%Y-%m-%d)
+          
+          echo "Expiration date: $EXPIRATION_DATE"
+          echo "Current date: $CURRENT_DATE"
+          
+          # Calculate days until expiration
+          EXPIRATION_SECONDS=$(date -d "$EXPIRATION_DATE" +%s)
+          CURRENT_SECONDS=$(date -d "$CURRENT_DATE" +%s)
+          DAYS_REMAINING=$(( ($EXPIRATION_SECONDS - $CURRENT_SECONDS) / 86400 ))
+          
+          echo "Days remaining: $DAYS_REMAINING"
+          echo "days_remaining=$DAYS_REMAINING" >> $GITHUB_OUTPUT
+          echo "expiration_date=$EXPIRATION_DATE" >> $GITHUB_OUTPUT
+          
+          # Trigger warnings at 7, 3, and 1 days before expiration
+          if [ "$DAYS_REMAINING" -eq 7 ] || [ "$DAYS_REMAINING" -eq 3 ] || [ "$DAYS_REMAINING" -eq 1 ]; then
+            echo "should_warn=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Warning threshold reached: $DAYS_REMAINING days remaining"
+          else
+            echo "should_warn=false" >> $GITHUB_OUTPUT
+            echo "✅ No warning needed ($DAYS_REMAINING days remaining)"
+          fi
+
+      - name: Create expiration warning issue
+        if: steps.check_date.outputs.should_warn == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.MASTER_PAT }}
+        run: |
+          DAYS=${{ steps.check_date.outputs.days_remaining }}
+          EXPIRATION=${{ steps.check_date.outputs.expiration_date }}
+          
+          # Check if token is set
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ ERROR: MASTER_PAT secret is not set"
+            echo "Falling back to GITHUB_TOKEN (may have limited permissions)"
+            export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          fi
+          
+          # Determine urgency level
+          if [ "$DAYS" -eq 1 ]; then
+            URGENCY="🚨 URGENT"
+            LABEL="demo-expiration,urgent"
+          elif [ "$DAYS" -le 3 ]; then
+            URGENCY="⚠️ WARNING"
+            LABEL="demo-expiration,warning"
+          else
+            URGENCY="ℹ️ NOTICE"
+            LABEL="demo-expiration,notice"
+          fi
+          
+          # Create warning issue
+          gh issue create \
+            --title "$URGENCY: Demo Expires in $DAYS Day(s)" \
+            --body "This demo repository will expire on **$EXPIRATION** ($DAYS day(s) from now).
+
+**Actions Required:**
+- [ ] Extend expiration date if demo is still needed
+- [ ] Archive manually if demo is no longer needed
+- [ ] Update dependencies and validate syntax before extending
+
+**What Happens After Expiration:**
+- Repository will be automatically archived
+- No further updates possible without unarchiving
+- Users searching GitHub will see it as archived/inactive
+
+**To Extend Expiration:**
+1. Update expiration date in \`deploy_all.sql\` header
+2. Update README badges and documentation
+3. Validate all scripts still work with latest Snowflake features
+4. Commit and push changes
+
+This issue was automatically created by the demo expiration warning workflow." \
+            --label "$LABEL" || {
+              echo "⚠️ Failed to create issue"
+              echo "This may be due to:"
+              echo "1. MASTER_PAT not set or lacks 'issues:write' permission"
+              echo "2. Repository settings restrict issue creation"
+              exit 1
+            }
+          
+          echo "✅ Warning issue created successfully"
+
+      - name: Summary
+        run: |
+          echo "### Expiration Check Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Expiration Date:** ${{ steps.check_date.outputs.expiration_date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Days Remaining:** ${{ steps.check_date.outputs.days_remaining }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Warning Issued:** ${{ steps.check_date.outputs.should_warn }}" >> $GITHUB_STEP_SUMMARY
+
