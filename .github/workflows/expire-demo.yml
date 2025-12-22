@@ -1,91 +1,63 @@
-name: Demo Expiration Check
-
-# Purpose: Auto-archive this demo repository after expiration date
-# This ensures stale demos with outdated syntax don't harm user experience
+name: Archive Demo on Expiration
 
 on:
   schedule:
-    # Run daily at midnight UTC
+    # Run daily at 00:00 UTC to check expiration
     - cron: '0 0 * * *'
-  
-  # Allow manual trigger for testing
-  workflow_dispatch:
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   check-expiration:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Check if demo has expired
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check expiration date
+        id: check_date
         run: |
-          EXPIRE_DATE="2025-12-24"  # Last updated: 2025-12-01
-          TODAY=$(date +%Y-%m-%d)
+          # Extract expiration date from deploy_all.sql
+          EXPIRATION_DATE=$(grep -oP 'EXPIRES:\s*\K\d{4}-\d{2}-\d{2}' deploy_all.sql | head -1)
+          CURRENT_DATE=$(date -u +%Y-%m-%d)
           
-          echo "Demo expiration date: $EXPIRE_DATE"
-          echo "Today's date: $TODAY"
+          echo "Expiration date: $EXPIRATION_DATE"
+          echo "Current date: $CURRENT_DATE"
           
-          if [[ "$TODAY" > "$EXPIRE_DATE" ]]; then
-            echo "❌ Demo expired on $EXPIRE_DATE"
-            echo "EXPIRED=true" >> $GITHUB_ENV
+          if [[ "$CURRENT_DATE" > "$EXPIRATION_DATE" ]] || [[ "$CURRENT_DATE" == "$EXPIRATION_DATE" ]]; then
+            echo "expired=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Demo has expired!"
           else
-            DAYS_LEFT=$(( ($(date -d "$EXPIRE_DATE" +%s) - $(date -d "$TODAY" +%s)) / 86400 ))
-            echo "✅ Demo still active. $DAYS_LEFT days remaining until $EXPIRE_DATE"
-            echo "EXPIRED=false" >> $GITHUB_ENV
+            echo "expired=false" >> $GITHUB_OUTPUT
+            echo "✅ Demo is still active"
           fi
-      
-      - name: Archive repository if expired
-        if: env.EXPIRED == 'true'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            // Archive the repository
-            await github.rest.repos.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              archived: true
-            });
-            
-            console.log('✅ Repository archived successfully');
-            
-            // Optionally: Make repository private
-            // await github.rest.repos.update({
-            //   owner: context.repo.owner,
-            //   repo: context.repo.repo,
-            //   private: true
-            // });
-      
-      - name: Create expiration issue (7 days warning)
-        if: env.EXPIRED == 'false'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const expireDate = new Date('2025-12-24');
-            const today = new Date();
-            const daysLeft = Math.ceil((expireDate - today) / (1000 * 60 * 60 * 24));
-            
-            if (daysLeft <= 7 && daysLeft > 0) {
-              // Check if warning issue already exists
-              const issues = await github.rest.issues.listForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                labels: 'demo-expiration'
-              });
-              
-              if (issues.data.length === 0) {
-                // Create warning issue
-                await github.rest.issues.create({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  title: `⚠️ Demo Expires in ${daysLeft} Days`,
-                  body: `This demo repository will expire on **2025-12-24** (${daysLeft} days from now).\n\n**Actions Required:**\n- [ ] Extend expiration date if demo is still needed: Run \`extendexpiration 30\`\n- [ ] Archive manually if demo is no longer needed\n- [ ] Update dependencies and validate syntax before extending\n\n**What Happens After Expiration:**\n- Repository will be automatically archived\n- No further updates possible without unarchiving\n- Users searching GitHub will see it as archived/inactive\n\n**To Extend Expiration:**\n\`\`\`bash\n# Clone the repo\ngit clone https://github.com/${context.repo.owner}/${context.repo.repo}\ncd ${context.repo.repo}\n\n# Run extendexpiration command (via Cursor)\n# This updates all files from .demo-config\nextendexpiration 30\n\`\`\`\n\nThis issue was automatically created by the demo expiration workflow.`,
-                  labels: ['demo-expiration', 'warning']
-                });
-                
-                console.log('✅ Expiration warning issue created');
-              }
-            }
 
+      - name: Archive and make repository private
+        if: steps.check_date.outputs.expired == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.MASTER_PAT }}
+        run: |
+          # Archive the repository
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }} \
+            -f archived=true \
+            -F private=true
 
+      - name: Add expiration notice
+        if: steps.check_date.outputs.expired == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.MASTER_PAT }}
+        run: |
+          # Create an issue documenting the expiration
+          gh issue create \
+            --title "Demo Expired - Repository Archived" \
+            --body "This demo project expired on $(grep -oP 'EXPIRES:\s*\K\d{4}-\d{2}-\d{2}' deploy_all.sql | head -1) and has been automatically archived. The repository is now private and read-only." \
+            --label "expired"
+
+      - name: Notify on success
+        if: steps.check_date.outputs.expired == 'true'
+        run: |
+          echo "✅ Repository archived successfully"
+          echo "The demo has been archived and made private"
