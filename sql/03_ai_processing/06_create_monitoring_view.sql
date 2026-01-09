@@ -16,7 +16,7 @@
  *   See sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-02-08
  ******************************************************************************/
 
 -- Set context
@@ -30,7 +30,7 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 -- ============================================================================
 
 CREATE OR REPLACE VIEW V_PROCESSING_METRICS
-COMMENT = 'DEMO: swiftclaw - Real-time pipeline monitoring metrics | Expires: 2026-01-09 | Author: SE Community'
+COMMENT = 'DEMO: swiftclaw - Real-time pipeline monitoring metrics | Expires: 2026-02-08 | Author: SE Community'
 AS
 WITH pipeline_stats AS (
     SELECT

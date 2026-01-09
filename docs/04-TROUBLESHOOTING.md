@@ -2,7 +2,7 @@
 
 **Author:** SE Community
 **Last Updated:** 2025-11-24
-**Expires:** 2026-01-09
+**Expires:** 2026-02-08
 
 ---
 
@@ -369,4 +369,4 @@ Contact your Snowflake account team or check the [GitHub repository issues](http
 
 ---
 
-**Demo Expires:** 2026-01-09
+**Demo Expires:** 2026-02-08

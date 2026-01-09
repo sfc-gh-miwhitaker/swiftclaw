@@ -28,7 +28,7 @@
  *   See sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-02-08
  ******************************************************************************/
 
 -- Set context (ensure ACCOUNTADMIN role for table creation)
@@ -56,7 +56,7 @@ CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_CATALOG (
     last_processed_at TIMESTAMP_NTZ,
     metadata VARIANT  -- Additional business metadata
 )
-COMMENT = 'DEMO: swiftclaw - Document catalog with stage paths | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Document catalog with stage paths | Expires: 2026-02-08 | Author: SE Community';
 
 -- Processing Log: Track processing attempts and timing
 CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG (
@@ -69,7 +69,7 @@ CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG (
     status STRING,  -- 'SUCCESS', 'FAILED'
     error_message STRING
 )
-COMMENT = 'DEMO: swiftclaw - Processing audit log | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Processing audit log | Expires: 2026-02-08 | Author: SE Community';
 
 -- Error Tracking: Detailed error information
 CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_ERRORS (
@@ -82,7 +82,7 @@ CREATE OR REPLACE TABLE SWIFTCLAW.RAW_DOCUMENT_ERRORS (
     error_details VARIANT,
     retry_count NUMBER DEFAULT 0
 )
-COMMENT = 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Error tracking for failed processing | Expires: 2026-02-08 | Author: SE Community';
 
 -- ============================================================================
 -- STAGING LAYER: AI Processing Results
@@ -99,7 +99,7 @@ CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_PARSED_DOCUMENTS (
     processed_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     processing_duration_seconds NUMBER
 )
-COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2026-02-08 | Author: SE Community';
 
 -- Translated Content Table (AI_TRANSLATE results)
 CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_TRANSLATED_CONTENT (
@@ -112,7 +112,7 @@ CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_TRANSLATED_CONTENT (
     translation_confidence FLOAT,
     translated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 )
-COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2026-02-08 | Author: SE Community';
 
 -- Classified Documents Table (AI_CLASSIFY results)
 CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_CLASSIFIED_DOCS (
@@ -125,7 +125,7 @@ CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_CLASSIFIED_DOCS (
     classification_details VARIANT,  -- Full AI_CLASSIFY response
     classified_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 )
-COMMENT = 'DEMO: swiftclaw - AI_CLASSIFY results | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_CLASSIFY results | Expires: 2026-02-08 | Author: SE Community';
 
 -- Extracted Entities Table (AI_EXTRACT results)
 CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_EXTRACTED_ENTITIES (
@@ -136,7 +136,7 @@ CREATE OR REPLACE TRANSIENT TABLE SWIFTCLAW.STG_EXTRACTED_ENTITIES (
     extraction_confidence FLOAT,
     extracted_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 )
-COMMENT = 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_EXTRACT results | Expires: 2026-02-08 | Author: SE Community';
 
 -- ============================================================================
 -- ANALYTICS LAYER: Business Insights
@@ -158,7 +158,7 @@ CREATE OR REPLACE TABLE SWIFTCLAW.FCT_DOCUMENT_INSIGHTS (
     insight_created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     metadata VARIANT
 )
-COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2026-01-09 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2026-02-08 | Author: SE Community';
 
 -- ============================================================================
 -- VERIFICATION

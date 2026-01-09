@@ -24,7 +24,7 @@
  *   See sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-01-09
+ * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-02-08
  ******************************************************************************/
 
 -- Set context

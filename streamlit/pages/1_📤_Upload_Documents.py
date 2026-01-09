@@ -16,7 +16,7 @@ FEATURES:
     - Support for multiple languages (EN, ES, DE, PT, RU, ZH)
 
 Author: SE Community
-Created: 2025-12-09 | Updated: 2025-12-10 | Expires: 2026-01-09
+Created: 2025-12-09 | Updated: 2025-12-10 | Expires: 2026-02-08
 """
 
 import streamlit as st
@@ -400,5 +400,5 @@ This upload interface demonstrates Streamlit file handling patterns. For product
 - Snowpipe for automatic ingestion from cloud storage
 - External stages with event notifications for real-time processing
 
-**Demo Expires:** 2026-01-09 | **Author:** SE Community
+**Demo Expires:** 2026-02-08 | **Author:** SE Community
 """)

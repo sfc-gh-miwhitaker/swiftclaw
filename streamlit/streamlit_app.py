@@ -16,7 +16,7 @@ FEATURES:
     - Manual review queue
 
 Author: SE Community
-Created: 2025-11-24 | Expires: 2026-01-09
+Created: 2025-11-24 | Expires: 2026-02-08
 """
 
 import streamlit as st
@@ -45,7 +45,7 @@ session = get_active_session()
 st.title("📄 AI Document Processing Dashboard")
 st.markdown("""
 **Demo Project:** AI-powered document processing for entertainment industry
-**Expires:** 2026-01-09 | **Author:** SE Community
+**Expires:** 2026-02-08 | **Author:** SE Community
 """)
 
 st.markdown("---")
@@ -372,5 +372,5 @@ This dashboard demonstrates production-grade patterns for AI document processing
 
 **Data Source:** `SNOWFLAKE_EXAMPLE.SWIFTCLAW`
 **Refresh:** Data updates automatically when underlying tables are refreshed
-**Demo Expires:** 2026-01-09
+**Demo Expires:** 2026-02-08
 """)

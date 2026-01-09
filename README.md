@@ -2,16 +2,16 @@
 
 ![Reference Implementation](https://img.shields.io/badge/Reference-Implementation-blue)
 ![Ready to Run](https://img.shields.io/badge/Ready%20to%20Run-Yes-green)
-![Expires](https://img.shields.io/badge/Expires-2026--01--09-orange)
+![Expires](https://img.shields.io/badge/Expires-2026--02--08-orange)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
-> **DEMONSTRATION PROJECT - EXPIRES: 2026-01-09**
+> **DEMONSTRATION PROJECT - EXPIRES: 2026-02-08**
 > This demo uses Snowflake AI Functions current as of November 2024.
 > After expiration, this repository will be archived and made private.
 
 **Author:** SE Community
 **Purpose:** Reference implementation for AI-powered document processing in media & entertainment
-**Created:** 2025-11-24 | **Expires:** 2026-01-09 (30 days) | **Status:** ACTIVE
+**Created:** 2025-11-24 | **Expires:** 2026-02-08 (30 days) | **Status:** ACTIVE
 
 ---
 
@@ -532,4 +532,4 @@ Apache 2.0 - See LICENSE file for details
 
 ---
 
-**Demo Expiration:** This repository will be archived and made private on 2026-01-09
+**Demo Expiration:** This repository will be archived and made private on 2026-02-08
