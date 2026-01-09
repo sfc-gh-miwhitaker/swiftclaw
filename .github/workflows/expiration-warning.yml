@@ -72,28 +72,28 @@ jobs:
           fi
           
           BODY=$(cat <<EOF
-This demo repository will expire on **$EXPIRATION** ($DAYS day(s) from now).
-
-**Actions Required:**
-- [ ] Extend expiration date if demo is still needed
-- [ ] Archive manually if demo is no longer needed
-- [ ] Update dependencies and validate syntax before extending
-
-**What Happens After Expiration:**
-- Repository will be automatically archived
-- No further updates possible without unarchiving
-- Users searching GitHub will see it as archived/inactive
-
-**To Extend Expiration:**
-1. Update expiration date in \`deploy_all.sql\` header
-2. Update README badges and documentation
-3. Validate all scripts still work with latest Snowflake features
-4. Commit and push changes
-
-This issue was automatically created by the demo expiration warning workflow.
-EOF
+          This demo repository will expire on **$EXPIRATION** ($DAYS day(s) from now).
+          
+          **Actions Required:**
+          - [ ] Extend expiration date if demo is still needed
+          - [ ] Archive manually if demo is no longer needed
+          - [ ] Update dependencies and validate syntax before extending
+          
+          **What Happens After Expiration:**
+          - Repository will be automatically archived
+          - No further updates possible without unarchiving
+          - Users searching GitHub will see it as archived/inactive
+          
+          **To Extend Expiration:**
+          1. Update expiration date in \`deploy_all.sql\` header
+          2. Update README badges and documentation
+          3. Validate all scripts still work with latest Snowflake features
+          4. Commit and push changes
+          
+          This issue was automatically created by the demo expiration warning workflow.
+          EOF
           )
-
+          
           # Create warning issue
           gh issue create \
             --title "$URGENCY: Demo Expires in $DAYS Day(s)" \
