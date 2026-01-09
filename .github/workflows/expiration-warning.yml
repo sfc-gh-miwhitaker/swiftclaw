@@ -71,10 +71,8 @@ jobs:
             LABEL="demo-expiration,notice"
           fi
           
-          # Create warning issue
-          gh issue create \
-            --title "$URGENCY: Demo Expires in $DAYS Day(s)" \
-            --body "This demo repository will expire on **$EXPIRATION** ($DAYS day(s) from now).
+          BODY=$(cat <<EOF
+This demo repository will expire on **$EXPIRATION** ($DAYS day(s) from now).
 
 **Actions Required:**
 - [ ] Extend expiration date if demo is still needed
@@ -92,7 +90,14 @@ jobs:
 3. Validate all scripts still work with latest Snowflake features
 4. Commit and push changes
 
-This issue was automatically created by the demo expiration warning workflow." \
+This issue was automatically created by the demo expiration warning workflow.
+EOF
+          )
+
+          # Create warning issue
+          gh issue create \
+            --title "$URGENCY: Demo Expires in $DAYS Day(s)" \
+            --body "$BODY" \
             --label "$LABEL" || {
               echo "⚠️ Failed to create issue"
               echo "This may be due to:"
