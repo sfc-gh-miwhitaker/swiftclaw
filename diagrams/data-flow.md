@@ -45,7 +45,7 @@ flowchart TD
     end
 
     PDF -->|Upload| Stage
-    Stage -->|Directory View| Catalog
+    Stage -->|Directory Table Refresh| Catalog
 
     Catalog -->|Stage File Path| Parse
     Parse -->|Structured JSON| Parsed
@@ -55,7 +55,7 @@ flowchart TD
 
     Parsed -->|Document Text| Enrich
     Translated -->|Translated Text| Enrich
-    Enrich -->|Structured JSON| Enriched
+    Enrich -->|Task Output| Enriched
 
     Enriched -->|Aggregate| Insights
     Insights -->|Monitor| Metrics
@@ -69,7 +69,7 @@ flowchart TD
 
 ### Stage 1: Document Ingestion
 **Input:** PDF files uploaded to the internal stage  
-**Process:** Stage directory is exposed via `RAW_DOCUMENT_CATALOG` view  
+**Process:** Stage directory is merged into `RAW_DOCUMENT_CATALOG` table  
 **Output:** File metadata (path, size, language, type)  
 
 ### Stage 2: AI Parsing
@@ -84,7 +84,7 @@ flowchart TD
 
 ### Stage 4: Enrichment
 **Input:** Parsed or translated text  
-**Process:** `AI_COMPLETE` produces structured JSON using a schema  
+**Process:** Task calls `AI_COMPLETE` to produce structured JSON  
 **Output:** Enriched fields in `STG_ENRICHED_DOCUMENTS`  
 
 ### Stage 5: Analytics

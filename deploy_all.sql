@@ -59,12 +59,12 @@
 EXECUTE IMMEDIATE $$
 DECLARE
     expires DATE DEFAULT '2026-02-08'::DATE;
+    demo_expired EXCEPTION (-20001,
+        'ERROR: This demo expired on 2026-02-08. Demo projects are maintained for 30 days only. Contact your Snowflake account team for an updated version.'
+    );
 BEGIN
-    IF CURRENT_DATE() >= expires THEN
-        RAISE STATEMENT_ERROR USING MESSAGE =
-            'ERROR: This demo expired on 2026-02-08. ' ||
-            'Demo projects are maintained for 30 days only. ' ||
-            'Contact your Snowflake account team for an updated version.';
+    IF (CURRENT_DATE() >= expires) THEN
+        RAISE demo_expired;
     END IF;
 END;
 $$;
@@ -213,6 +213,9 @@ COPY FILES
 
 -- Verify files copied to internal stage
 LS @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/ PATTERN = '.*\.pdf';
+
+-- Refresh stage directory table for catalog ingestion
+ALTER STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE REFRESH;
 
 -- ============================================================================
 -- SECTION 7: DYNAMIC TABLE PIPELINE (from Git Repository)

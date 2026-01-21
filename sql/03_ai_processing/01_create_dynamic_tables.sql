@@ -7,7 +7,9 @@
  *   automated orchestration and AI_COMPLETE structured output for enrichment.
  *
  * OBJECTS CREATED:
- *   - RAW_DOCUMENT_CATALOG (view): Stage directory metadata
+ *   - RAW_DOCUMENT_CATALOG (table): Stage directory metadata
+ *   - REFRESH_DOCUMENT_CATALOG (procedure)
+ *   - REFRESH_DOCUMENT_CATALOG_TASK (task)
  *   - STG_PARSED_DOCUMENTS (dynamic table)
  *   - STG_TRANSLATED_CONTENT (dynamic table)
  *   - STG_ENRICHED_DOCUMENTS (dynamic table)
@@ -28,55 +30,124 @@ USE SCHEMA SWIFTCLAW;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 -- ============================================================================
--- DOCUMENT CATALOG (VIEW OVER STAGE DIRECTORY)
+-- DOCUMENT CATALOG (TABLE + REFRESH PROCEDURE)
 -- ============================================================================
 
-CREATE OR REPLACE VIEW RAW_DOCUMENT_CATALOG
-COMMENT = 'DEMO: swiftclaw - Stage directory catalog view | Expires: 2026-02-08 | Author: SE Community'
+CREATE OR REPLACE TABLE RAW_DOCUMENT_CATALOG (
+    document_id STRING,
+    document_type STRING,
+    stage_name STRING,
+    file_path STRING,
+    file_name STRING,
+    file_format STRING,
+    file_size_bytes NUMBER,
+    original_language STRING,
+    upload_date TIMESTAMP_NTZ,
+    metadata VARIANT
+)
+COMMENT = 'DEMO: swiftclaw - Stage directory catalog table | Expires: 2026-02-08 | Author: SE Community';
+
+CREATE OR REPLACE PROCEDURE REFRESH_DOCUMENT_CATALOG()
+RETURNS STRING
+LANGUAGE SQL
 AS
-SELECT
-    'DOC_' || UPPER(MD5_HEX(relative_path)) AS document_id,
-    CASE
-        WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'invoices' THEN 'INVOICE'
-        WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'royalty' THEN 'ROYALTY_STATEMENT'
-        WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'contracts' THEN 'CONTRACT'
-        WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'other' THEN 'OTHER'
-        WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'generated'
-             AND REGEXP_LIKE(relative_path, 'invoice_') THEN 'INVOICE'
-        WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'generated'
-             AND REGEXP_LIKE(relative_path, 'royalty_') THEN 'ROYALTY_STATEMENT'
-        WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'generated'
-             AND REGEXP_LIKE(relative_path, 'contract_') THEN 'CONTRACT'
-        WHEN REGEXP_LIKE(relative_path, '^bridge_') THEN 'CONTRACT'
-        ELSE 'OTHER'
-    END AS document_type,
-    '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
-    relative_path AS file_path,
-    REGEXP_SUBSTR(relative_path, '[^/]+$') AS file_name,
-    COALESCE(
-        UPPER(REGEXP_SUBSTR(relative_path, '\\.([^.]+)$', 1, 1, 'e', 1)),
-        'PDF'
-    ) AS file_format,
-    size AS file_size_bytes,
-    COALESCE(
-        REGEXP_SUBSTR(
-            relative_path,
-            '_(en|es|de|pt|ru|zh|fr|ja|ko)(_|\\.)',
-            1,
-            1,
-            'e',
-            1
-        ),
-        'en'
-    ) AS original_language,
-    last_modified AS upload_date,
-    OBJECT_CONSTRUCT(
-        'source', 'stage_directory',
-        'directory', SPLIT_PART(relative_path, '/', 1),
-        'file_md5', md5
-    ) AS metadata
-FROM DIRECTORY(@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE)
-WHERE LOWER(relative_path) LIKE '%.pdf';
+$$
+BEGIN
+    MERGE INTO RAW_DOCUMENT_CATALOG AS tgt
+    USING (
+        SELECT
+            'DOC_' || UPPER(MD5_HEX(relative_path)) AS document_id,
+            CASE
+                WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'invoices' THEN 'INVOICE'
+                WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'royalty' THEN 'ROYALTY_STATEMENT'
+                WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'contracts' THEN 'CONTRACT'
+                WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'other' THEN 'OTHER'
+                WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'generated'
+                     AND REGEXP_LIKE(relative_path, 'invoice_') THEN 'INVOICE'
+                WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'generated'
+                     AND REGEXP_LIKE(relative_path, 'royalty_') THEN 'ROYALTY_STATEMENT'
+                WHEN SPLIT_PART(relative_path, '/', 1) ILIKE 'generated'
+                     AND REGEXP_LIKE(relative_path, 'contract_') THEN 'CONTRACT'
+                WHEN REGEXP_LIKE(relative_path, '^bridge_') THEN 'CONTRACT'
+                ELSE 'OTHER'
+            END AS document_type,
+            '@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE' AS stage_name,
+            relative_path AS file_path,
+            REGEXP_SUBSTR(relative_path, '[^/]+$') AS file_name,
+            COALESCE(
+                UPPER(REGEXP_SUBSTR(relative_path, '\\.([^.]+)$', 1, 1, 'e', 1)),
+                'PDF'
+            ) AS file_format,
+            size AS file_size_bytes,
+            COALESCE(
+                REGEXP_SUBSTR(
+                    relative_path,
+                    '_(en|es|de|pt|ru|zh|fr|ja|ko)(_|\\.)',
+                    1,
+                    1,
+                    'e',
+                    1
+                ),
+                'en'
+            ) AS original_language,
+            last_modified::TIMESTAMP_NTZ AS upload_date,
+            OBJECT_CONSTRUCT(
+                'source', 'stage_directory',
+                'directory', SPLIT_PART(relative_path, '/', 1),
+                'file_md5', md5
+            ) AS metadata
+        FROM DIRECTORY(@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE)
+        WHERE LOWER(relative_path) LIKE '%.pdf'
+    ) AS src
+    ON tgt.file_path = src.file_path
+    WHEN MATCHED THEN UPDATE SET
+        document_id = src.document_id,
+        document_type = src.document_type,
+        stage_name = src.stage_name,
+        file_name = src.file_name,
+        file_format = src.file_format,
+        file_size_bytes = src.file_size_bytes,
+        original_language = src.original_language,
+        upload_date = src.upload_date,
+        metadata = src.metadata
+    WHEN NOT MATCHED THEN INSERT (
+        document_id,
+        document_type,
+        stage_name,
+        file_path,
+        file_name,
+        file_format,
+        file_size_bytes,
+        original_language,
+        upload_date,
+        metadata
+    )
+    VALUES (
+        src.document_id,
+        src.document_type,
+        src.stage_name,
+        src.file_path,
+        src.file_name,
+        src.file_format,
+        src.file_size_bytes,
+        src.original_language,
+        src.upload_date,
+        src.metadata
+    );
+
+    RETURN 'RAW_DOCUMENT_CATALOG refreshed';
+END;
+$$;
+
+CALL REFRESH_DOCUMENT_CATALOG();
+
+CREATE OR REPLACE TASK REFRESH_DOCUMENT_CATALOG_TASK
+    WAREHOUSE = SFE_DOCUMENT_AI_WH
+    SCHEDULE = '10 MINUTE'
+AS
+    CALL REFRESH_DOCUMENT_CATALOG();
+
+ALTER TASK REFRESH_DOCUMENT_CATALOG_TASK RESUME;
 
 -- ============================================================================
 -- STAGE 1: PARSE DOCUMENTS
@@ -95,7 +166,7 @@ SELECT
     base.file_path,
     base.parsed_content,
     'LAYOUT' AS extraction_mode,
-    TRY_TO_NUMBER(base.parsed_content:num_pages::STRING) AS page_count,
+    TRY_TO_NUMBER(base.parsed_content:metadata:pageCount::STRING) AS page_count,
     base.upload_date AS processed_at
 FROM (
     SELECT
@@ -135,40 +206,79 @@ FROM (
         document_id,
         original_language,
         processed_at,
-        parsed_content:text::STRING AS parsed_text
+        parsed_content:content::STRING AS parsed_text
     FROM STG_PARSED_DOCUMENTS
-    WHERE parsed_content:text::STRING IS NOT NULL
+    WHERE parsed_content:content::STRING IS NOT NULL
       AND original_language <> 'en'
 ) parsed;
 
 -- ============================================================================
--- STAGE 3: ENRICH DOCUMENTS (CLASSIFY + EXTRACT) WITH AI_COMPLETE
+-- STAGE 3: ENRICH DOCUMENTS (AI_COMPLETE VIA TASK)
 -- ============================================================================
 
-CREATE OR REPLACE DYNAMIC TABLE STG_ENRICHED_DOCUMENTS
-    TARGET_LAG = '10 minutes'
-    WAREHOUSE = SFE_DOCUMENT_AI_WH
-    COMMENT = 'DEMO: swiftclaw - AI_COMPLETE structured enrichment | Expires: 2026-02-08 | Author: SE Community'
+CREATE OR REPLACE TABLE STG_ENRICHED_DOCUMENTS (
+    document_id STRING,
+    document_type STRING,
+    priority_level STRING,
+    business_category STRING,
+    total_amount NUMBER,
+    currency STRING,
+    document_date DATE,
+    vendor_territory STRING,
+    confidence_score NUMBER,
+    enrichment_details VARIANT,
+    enriched_at TIMESTAMP_NTZ
+)
+COMMENT = 'DEMO: swiftclaw - AI_COMPLETE structured enrichment | Expires: 2026-02-08 | Author: SE Community';
+
+CREATE OR REPLACE PROCEDURE REFRESH_ENRICHED_DOCUMENTS()
+RETURNS STRING
+LANGUAGE SQL
 AS
-WITH base AS (
-    SELECT
-        parsed.document_id,
-        parsed.document_type AS catalog_document_type,
-        parsed.original_language,
-        parsed.processed_at,
-        COALESCE(trans.translated_text, parsed.parsed_content:text::STRING) AS analysis_text
-    FROM STG_PARSED_DOCUMENTS parsed
-    LEFT JOIN STG_TRANSLATED_CONTENT trans
-        ON parsed.document_id = trans.document_id
-    WHERE parsed.parsed_content:text::STRING IS NOT NULL
-),
-enriched AS (
+$$
+BEGIN
+    INSERT INTO STG_ENRICHED_DOCUMENTS (
+        document_id,
+        document_type,
+        priority_level,
+        business_category,
+        total_amount,
+        currency,
+        document_date,
+        vendor_territory,
+        confidence_score,
+        enrichment_details,
+        enriched_at
+    )
     SELECT
         base.document_id,
-        base.catalog_document_type,
-        base.original_language,
-        base.processed_at,
-        TRY_PARSE_JSON(
+        COALESCE(enrichment_json:document_type::STRING, base.catalog_document_type) AS document_type,
+        enrichment_json:priority_level::STRING AS priority_level,
+        enrichment_json:business_category::STRING AS business_category,
+        TRY_TO_NUMBER(enrichment_json:total_amount::STRING) AS total_amount,
+        COALESCE(enrichment_json:currency::STRING, 'USD') AS currency,
+        TRY_TO_DATE(enrichment_json:document_date::STRING) AS document_date,
+        enrichment_json:vendor_territory::STRING AS vendor_territory,
+        TRY_TO_NUMBER(enrichment_json:confidence_score::STRING) AS confidence_score,
+        enrichment_json AS enrichment_details,
+        CURRENT_TIMESTAMP() AS enriched_at
+    FROM (
+        SELECT
+            parsed.document_id,
+            parsed.document_type AS catalog_document_type,
+            COALESCE(trans.translated_text, parsed.parsed_content:content::STRING) AS analysis_text
+        FROM STG_PARSED_DOCUMENTS parsed
+        LEFT JOIN STG_TRANSLATED_CONTENT trans
+            ON parsed.document_id = trans.document_id
+        WHERE parsed.parsed_content:content::STRING IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM STG_ENRICHED_DOCUMENTS existing
+              WHERE existing.document_id = parsed.document_id
+          )
+    ) base,
+    LATERAL (
+        SELECT TRY_PARSE_JSON(
             AI_COMPLETE(
                 model => 'snowflake-arctic',
                 prompt => CONCAT(
@@ -222,21 +332,21 @@ enriched AS (
                 )
             )
         ) AS enrichment_json
-    FROM base
-)
-SELECT
-    document_id,
-    COALESCE(enrichment_json:document_type::STRING, catalog_document_type) AS document_type,
-    enrichment_json:priority_level::STRING AS priority_level,
-    enrichment_json:business_category::STRING AS business_category,
-    TRY_TO_NUMBER(enrichment_json:total_amount::STRING) AS total_amount,
-    COALESCE(enrichment_json:currency::STRING, 'USD') AS currency,
-    TRY_TO_DATE(enrichment_json:document_date::STRING) AS document_date,
-    enrichment_json:vendor_territory::STRING AS vendor_territory,
-    TRY_TO_NUMBER(enrichment_json:confidence_score::STRING) AS confidence_score,
-    enrichment_json AS enrichment_details,
-    processed_at AS enriched_at
-FROM enriched;
+    ) enriched;
+
+    RETURN 'STG_ENRICHED_DOCUMENTS refreshed';
+END;
+$$;
+
+CALL REFRESH_ENRICHED_DOCUMENTS();
+
+CREATE OR REPLACE TASK REFRESH_ENRICHED_DOCUMENTS_TASK
+    WAREHOUSE = SFE_DOCUMENT_AI_WH
+    SCHEDULE = '10 MINUTE'
+AS
+    CALL REFRESH_ENRICHED_DOCUMENTS();
+
+ALTER TASK REFRESH_ENRICHED_DOCUMENTS_TASK RESUME;
 
 -- ============================================================================
 -- STAGE 4: AGGREGATE BUSINESS INSIGHTS

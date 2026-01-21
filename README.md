@@ -100,12 +100,12 @@ Leverage Snowflake AI Functions to:
    Documents (PDF/DOCX) -> @DOCUMENT_STAGE (Snowflake internal stage)
 
 2. CATALOG
-   Stage directory -> RAW_DOCUMENT_CATALOG (view)
+   Stage directory -> RAW_DOCUMENT_CATALOG (table)
 
-3. AI PROCESSING (Dynamic Tables)
-   - STG_PARSED_DOCUMENTS (AI_PARSE_DOCUMENT)
-   - STG_TRANSLATED_CONTENT (AI_TRANSLATE)
-   - STG_ENRICHED_DOCUMENTS (AI_COMPLETE structured output)
+3. AI PROCESSING (Dynamic Tables + Tasks)
+   - STG_PARSED_DOCUMENTS (AI_PARSE_DOCUMENT, dynamic table)
+   - STG_TRANSLATED_CONTENT (AI_TRANSLATE, dynamic table)
+   - STG_ENRICHED_DOCUMENTS (AI_COMPLETE structured output, task)
 
 4. INSIGHTS
    FCT_DOCUMENT_INSIGHTS (aggregated metrics)
@@ -120,10 +120,10 @@ Leverage Snowflake AI Functions to:
 ### Database Architecture
 
 **Project Schema** (`SWIFTCLAW`):
-- `RAW_DOCUMENT_CATALOG` - Stage directory view with document metadata
+- `RAW_DOCUMENT_CATALOG` - Stage directory table with document metadata
 - `STG_PARSED_DOCUMENTS` - AI_PARSE_DOCUMENT results (dynamic table)
 - `STG_TRANSLATED_CONTENT` - AI_TRANSLATE results (dynamic table)
-- `STG_ENRICHED_DOCUMENTS` - AI_COMPLETE structured enrichment (dynamic table)
+- `STG_ENRICHED_DOCUMENTS` - AI_COMPLETE structured enrichment (task-populated table)
 - `FCT_DOCUMENT_INSIGHTS` - Aggregated business insights (dynamic table)
 - `V_PROCESSING_METRICS` - Real-time monitoring view
 
@@ -143,10 +143,10 @@ See `diagrams/` for detailed architecture diagrams.
 | Object Type | Schema | Name | Purpose |
 |-------------|--------|------|---------|
 | Schema | - | `SWIFTCLAW` | Project schema |
-| View | `SWIFTCLAW` | `RAW_DOCUMENT_CATALOG` | Stage directory metadata |
+| Table | `SWIFTCLAW` | `RAW_DOCUMENT_CATALOG` | Stage directory metadata |
 | Dynamic Table | `SWIFTCLAW` | `STG_PARSED_DOCUMENTS` | AI parsing results |
 | Dynamic Table | `SWIFTCLAW` | `STG_TRANSLATED_CONTENT` | Translated text |
-| Dynamic Table | `SWIFTCLAW` | `STG_ENRICHED_DOCUMENTS` | AI_COMPLETE enrichment |
+| Table | `SWIFTCLAW` | `STG_ENRICHED_DOCUMENTS` | AI_COMPLETE enrichment |
 | Dynamic Table | `SWIFTCLAW` | `FCT_DOCUMENT_INSIGHTS` | Aggregated metrics |
 | View | `SWIFTCLAW` | `V_PROCESSING_METRICS` | Monitoring dashboard |
 | Streamlit | `SWIFTCLAW` | `SFE_DOCUMENT_DASHBOARD` | Interactive UI |
@@ -287,7 +287,7 @@ SELECT
         OBJECT_CONSTRUCT('mode', 'LAYOUT')                        -- Options: 'OCR' or 'LAYOUT'
     ) AS parsed_document;
 
--- Or using catalog view (stage and path stored separately):
+-- Or using catalog table (stage and path stored separately):
 SELECT
     catalog.document_id,
     AI_PARSE_DOCUMENT(
@@ -303,7 +303,7 @@ SELECT
     document_id,
     extraction_mode,
     page_count,
-    parsed_content:text::STRING AS extracted_text
+    parsed_content:content::STRING AS extracted_text
 FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
 LIMIT 5;
 ```

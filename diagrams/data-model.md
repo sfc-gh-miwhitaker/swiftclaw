@@ -10,7 +10,7 @@
 
 ## Overview
 
-This diagram shows the schema and relationships for the AI document pipeline. The design uses a catalog view over the stage and Dynamic Tables for processing and insights.
+This diagram shows the schema and relationships for the AI document pipeline. The design uses a catalog table refreshed from the stage directory and Dynamic Tables for processing and insights.
 
 ## Diagram
 
@@ -84,8 +84,9 @@ erDiagram
 
 ## Notes
 
-- `RAW_DOCUMENT_CATALOG` is a view over the stage directory, not a table.
-- All processing tables are Dynamic Tables that refresh automatically.
+- `RAW_DOCUMENT_CATALOG` is a table refreshed from the stage directory by a task.
+- STG_PARSED_DOCUMENTS and STG_TRANSLATED_CONTENT are Dynamic Tables.
+- STG_ENRICHED_DOCUMENTS is populated by a scheduled task.
 - `FCT_DOCUMENT_INSIGHTS` is the primary analytics table used by the Streamlit dashboard.
 
 ---

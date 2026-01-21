@@ -149,7 +149,7 @@ SELECT
     document_id,
     extraction_mode,
     page_count,
-    SUBSTR(parsed_content:text::STRING, 1, 200) AS parsed_preview
+    SUBSTR(parsed_content:content::STRING, 1, 200) AS parsed_preview
 FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_PARSED_DOCUMENTS
 ORDER BY processed_at DESC
 LIMIT 10;
