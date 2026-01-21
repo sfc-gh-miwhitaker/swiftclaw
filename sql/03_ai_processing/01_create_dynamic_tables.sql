@@ -21,7 +21,7 @@
  *   - SNOWFLAKE.CORTEX_USER database role granted
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-08
+ * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-20
  ******************************************************************************/
 
 USE ROLE ACCOUNTADMIN;
@@ -45,7 +45,7 @@ CREATE OR REPLACE TABLE RAW_DOCUMENT_CATALOG (
     upload_date TIMESTAMP_NTZ,
     metadata VARIANT
 )
-COMMENT = 'DEMO: swiftclaw - Stage directory catalog table | Expires: 2026-02-08 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - Stage directory catalog table | Expires: 2026-02-20 | Author: SE Community';
 
 CREATE OR REPLACE PROCEDURE REFRESH_DOCUMENT_CATALOG()
 RETURNS STRING
@@ -156,7 +156,7 @@ ALTER TASK REFRESH_DOCUMENT_CATALOG_TASK RESUME;
 CREATE OR REPLACE DYNAMIC TABLE STG_PARSED_DOCUMENTS
     TARGET_LAG = '10 minutes'
     WAREHOUSE = SFE_DOCUMENT_AI_WH
-    COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2026-02-08 | Author: SE Community'
+    COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2026-02-20 | Author: SE Community'
 AS
 SELECT
     base.document_id,
@@ -191,7 +191,7 @@ FROM (
 CREATE OR REPLACE DYNAMIC TABLE STG_TRANSLATED_CONTENT
     TARGET_LAG = '10 minutes'
     WAREHOUSE = SFE_DOCUMENT_AI_WH
-    COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2026-02-08 | Author: SE Community'
+    COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2026-02-20 | Author: SE Community'
 AS
 SELECT
     parsed.document_id,
@@ -229,7 +229,7 @@ CREATE OR REPLACE TABLE STG_ENRICHED_DOCUMENTS (
     enrichment_details VARIANT,
     enriched_at TIMESTAMP_NTZ
 )
-COMMENT = 'DEMO: swiftclaw - AI_COMPLETE structured enrichment | Expires: 2026-02-08 | Author: SE Community';
+COMMENT = 'DEMO: swiftclaw - AI_COMPLETE structured enrichment | Expires: 2026-02-20 | Author: SE Community';
 
 CREATE OR REPLACE PROCEDURE REFRESH_ENRICHED_DOCUMENTS()
 RETURNS STRING
@@ -355,7 +355,7 @@ ALTER TASK REFRESH_ENRICHED_DOCUMENTS_TASK RESUME;
 CREATE OR REPLACE DYNAMIC TABLE FCT_DOCUMENT_INSIGHTS
     TARGET_LAG = '10 minutes'
     WAREHOUSE = SFE_DOCUMENT_AI_WH
-    COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2026-02-08 | Author: SE Community'
+    COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2026-02-20 | Author: SE Community'
 AS
 SELECT
     'INS_' || catalog.document_id AS insight_id,
@@ -401,7 +401,7 @@ LEFT JOIN STG_ENRICHED_DOCUMENTS enriched
 -- ============================================================================
 
 CREATE OR REPLACE VIEW V_PROCESSING_METRICS
-COMMENT = 'DEMO: swiftclaw - Real-time pipeline monitoring metrics | Expires: 2026-02-08 | Author: SE Community'
+COMMENT = 'DEMO: swiftclaw - Real-time pipeline monitoring metrics | Expires: 2026-02-20 | Author: SE Community'
 AS
 WITH pipeline_stats AS (
     SELECT

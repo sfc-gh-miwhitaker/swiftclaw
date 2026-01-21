@@ -2,13 +2,13 @@
 
 **Author:** SE Community  
 **Last Updated:** 2026-01-21  
-**Expires:** 2026-02-08
+**Expires:** 2026-02-20
 
 ---
 
 ## Overview
 
-This demo automatically expires on **2026-02-08** (30 days from creation). This guide explains how to manually remove all demo objects before expiration if needed.
+This demo automatically expires on **2026-02-20** (30 days from creation). This guide explains how to manually remove all demo objects before expiration if needed.
 
 ---
 
@@ -98,6 +98,6 @@ To redeploy the demo after cleanup:
 
 ---
 
-**Demo Expiration:** 2026-02-08  
+**Demo Expiration:** 2026-02-20  
 After this date, this repository will be archived automatically.
 

@@ -3,7 +3,7 @@
  *
  * NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  *
- * DEMONSTRATION PROJECT - EXPIRES: 2026-02-08
+ * DEMONSTRATION PROJECT - EXPIRES: 2026-02-20
  * This demo uses Snowflake AI Functions validated as of December 2025.
  * After expiration, this repository will be archived.
  *
@@ -47,7 +47,7 @@
  *
  * GitHub Repository: https://github.com/sfc-gh-miwhitaker/swiftclaw
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-08 (30 days)
+ * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-20 (30 days)
  ******************************************************************************/
 
 -- ============================================================================
@@ -58,9 +58,9 @@
 -- This raises an exception to halt Snowsight "Run All" when expired.
 EXECUTE IMMEDIATE $$
 DECLARE
-    expires DATE DEFAULT '2026-02-08'::DATE;
+    expires DATE DEFAULT '2026-02-20'::DATE;
     demo_expired EXCEPTION (-20001,
-        'ERROR: This demo expired on 2026-02-08. Demo projects are maintained for 30 days only. Contact your Snowflake account team for an updated version.'
+        'ERROR: This demo expired on 2026-02-20. Demo projects are maintained for 30 days only. Contact your Snowflake account team for an updated version.'
     );
 BEGIN
     IF (CURRENT_DATE() >= expires) THEN
@@ -72,13 +72,13 @@ $$;
 -- Status banner for non-expired demos
 SELECT
     CASE
-        WHEN DATEDIFF('day', CURRENT_DATE(), '2026-02-08'::DATE) <= 7 THEN
+        WHEN DATEDIFF('day', CURRENT_DATE(), '2026-02-20'::DATE) <= 7 THEN
             'WARNING: This demo expires in ' ||
-            DATEDIFF('day', CURRENT_DATE(), '2026-02-08'::DATE) ||
-            ' days (2026-02-08). Plan accordingly.'
+            DATEDIFF('day', CURRENT_DATE(), '2026-02-20'::DATE) ||
+            ' days (2026-02-20). Plan accordingly.'
         ELSE
-            'Demo is active. Expires: 2026-02-08 (' ||
-            DATEDIFF('day', CURRENT_DATE(), '2026-02-08'::DATE) ||
+            'Demo is active. Expires: 2026-02-20 (' ||
+            DATEDIFF('day', CURRENT_DATE(), '2026-02-20'::DATE) ||
             ' days remaining)'
     END AS EXPIRATION_STATUS;
 
@@ -100,7 +100,7 @@ CREATE OR REPLACE API INTEGRATION SFE_GIT_API_INTEGRATION
     API_PROVIDER = GIT_HTTPS_API
     API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-miwhitaker/')
     ENABLED = TRUE
-    COMMENT = 'DEMO: swiftclaw - Git integration for AI document processing demo | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Git integration for AI document processing demo | Expires: 2026-02-20 | Author: SE Community';
 
 -- Verify API integration created successfully
 SHOW API INTEGRATIONS LIKE 'SFE_GIT%';
@@ -121,7 +121,7 @@ CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.GIT_REPOS
 CREATE OR REPLACE GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo
     API_INTEGRATION = SFE_GIT_API_INTEGRATION
     ORIGIN = 'https://github.com/sfc-gh-miwhitaker/swiftclaw'
-    COMMENT = 'DEMO: swiftclaw - AI Document Processing demo repository | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - AI Document Processing demo repository | Expires: 2026-02-20 | Author: SE Community';
 
 -- Fetch latest code from GitHub
 ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo FETCH;
@@ -142,7 +142,7 @@ CREATE WAREHOUSE IF NOT EXISTS SFE_DOCUMENT_AI_WH WITH
     MAX_CLUSTER_COUNT = 1                -- No multi-cluster (demo only)
     MIN_CLUSTER_COUNT = 1
     SCALING_POLICY = 'STANDARD'
-    COMMENT = 'DEMO: swiftclaw - Dedicated warehouse for AI document processing | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Dedicated warehouse for AI document processing | Expires: 2026-02-20 | Author: SE Community';
 
 -- Set warehouse context for subsequent operations
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
@@ -179,12 +179,12 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 -- (handles re-runs where prior cleanup dropped these objects)
 CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW
     DATA_RETENTION_TIME_IN_DAYS = 7
-    COMMENT = 'DEMO: swiftclaw - Project schema for dynamic tables | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Project schema for dynamic tables | Expires: 2026-02-20 | Author: SE Community';
 
 CREATE STAGE IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE
     ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
     DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'DEMO: swiftclaw - Internal stage for document files | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Internal stage for document files | Expires: 2026-02-20 | Author: SE Community';
 
 -- Grant stage read/write (now guaranteed to exist)
 GRANT READ, WRITE ON STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE TO ROLE SFE_DEMO_ROLE;
@@ -236,7 +236,7 @@ CREATE OR REPLACE STREAMLIT SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD
     FROM '@SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/streamlit'
     MAIN_FILE = 'streamlit_app.py'
     QUERY_WAREHOUSE = SFE_DOCUMENT_AI_WH
-    COMMENT = 'DEMO: swiftclaw - Interactive dashboard for document processing | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Interactive dashboard for document processing | Expires: 2026-02-20 | Author: SE Community';
 
 -- Verify Streamlit app created successfully
 SHOW STREAMLITS IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW;
@@ -296,7 +296,7 @@ GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
  *   -- Or manual: DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW CASCADE;
  *   --            DROP WAREHOUSE IF EXISTS SFE_DOCUMENT_AI_WH;
  *
- * Demo Expires: 2026-02-08 (30 days from creation)
+ * Demo Expires: 2026-02-20 (30 days from creation)
  ******************************************************************************/
 
 -- Verify deployment: Show created objects

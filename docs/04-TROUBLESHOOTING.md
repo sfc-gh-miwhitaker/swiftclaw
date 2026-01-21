@@ -2,7 +2,7 @@
 
 **Author:** SE Community  
 **Last Updated:** 2026-01-21  
-**Expires:** 2026-02-08
+**Expires:** 2026-02-20
 
 ---
 
@@ -244,5 +244,5 @@ FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.V_PROCESSING_METRICS;
 
 ---
 
-**Demo Expires:** 2026-02-08
+**Demo Expires:** 2026-02-20
 

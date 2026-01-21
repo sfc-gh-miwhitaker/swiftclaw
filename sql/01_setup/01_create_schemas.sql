@@ -15,7 +15,7 @@
  *   See sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-08
+ * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-20
  ******************************************************************************/
 
 -- Set context (ensure ACCOUNTADMIN role for schema creation)
@@ -29,7 +29,7 @@ USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
 CREATE SCHEMA IF NOT EXISTS SWIFTCLAW
     DATA_RETENTION_TIME_IN_DAYS = 7
-    COMMENT = 'DEMO: swiftclaw - Project schema (raw/staging/analytics layers) | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Project schema (raw/staging/analytics layers) | Expires: 2026-02-20 | Author: SE Community';
 
 -- ============================================================================
 -- DOCUMENT STAGE: Storage for AI Processing
@@ -40,7 +40,7 @@ CREATE SCHEMA IF NOT EXISTS SWIFTCLAW
 CREATE STAGE IF NOT EXISTS SWIFTCLAW.DOCUMENT_STAGE
     ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')  -- Server-side encryption
     DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'DEMO: swiftclaw - Internal stage for document files (PDF, DOCX, etc.) | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Internal stage for document files (PDF, DOCX, etc.) | Expires: 2026-02-20 | Author: SE Community';
 
 -- Verify stage created successfully
 SHOW STAGES IN SCHEMA SWIFTCLAW;
