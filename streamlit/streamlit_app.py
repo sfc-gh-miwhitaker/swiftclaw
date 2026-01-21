@@ -2,7 +2,7 @@
 DEMO PROJECT: AI Document Processing for Entertainment Industry
 Streamlit Dashboard
 
-⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
+NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
 
 PURPOSE:
     Interactive dashboard for business users to explore document processing
@@ -30,7 +30,6 @@ import altair as alt
 
 st.set_page_config(
     page_title="AI Document Processing Dashboard",
-    page_icon="📄",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -42,7 +41,7 @@ session = get_active_session()
 # HEADER & INTRO
 # ============================================================================
 
-st.title("📄 AI Document Processing Dashboard")
+st.title("AI Document Processing Dashboard")
 st.markdown("""
 **Demo Project:** AI-powered document processing for entertainment industry
 **Expires:** 2026-02-08 | **Author:** SE Community
@@ -54,20 +53,22 @@ st.markdown("---")
 # SIDEBAR FILTERS
 # ============================================================================
 
-st.sidebar.header("🔍 Filters")
+st.sidebar.header("Filters")
 
 # Document type filter
 doc_types = st.sidebar.multiselect(
     "Document Type",
-    options=["Invoice", "Royalty Statement", "Contract"],
-    default=["Invoice", "Royalty Statement", "Contract"]
+    options=["INVOICE", "ROYALTY_STATEMENT", "CONTRACT", "OTHER"],
+    default=["INVOICE", "ROYALTY_STATEMENT", "CONTRACT"],
+    format_func=lambda value: value.replace("_", " ").title()
 )
 
 # Priority filter
 priority_levels = st.sidebar.multiselect(
     "Priority Level",
-    options=["High", "Medium", "Low"],
-    default=["High", "Medium", "Low"]
+    options=["HIGH", "MEDIUM", "LOW"],
+    default=["HIGH", "MEDIUM", "LOW"],
+    format_func=lambda value: value.title()
 )
 
 # Manual review filter
@@ -82,13 +83,13 @@ date_range = st.sidebar.date_input(
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Quick Actions**")
-refresh_btn = st.sidebar.button("🔄 Refresh Data", use_container_width=True)
+refresh_btn = st.sidebar.button("Refresh Data", use_container_width=True)
 
 # ============================================================================
 # SECTION 1: PIPELINE HEALTH (Top KPIs)
 # ============================================================================
 
-st.header("🏥 Pipeline Health")
+st.header("Pipeline Health")
 
 # Query monitoring view
 monitoring_sql = "SELECT * FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.V_PROCESSING_METRICS"
@@ -142,7 +143,7 @@ st.markdown("---")
 # SECTION 2: DOCUMENT INSIGHTS TABLE
 # ============================================================================
 
-st.header("📊 Document Insights")
+st.header("Document Insights")
 
 # Build dynamic SQL query based on filters
 base_query = """
@@ -182,6 +183,9 @@ base_query += " ORDER BY insight_created_at DESC LIMIT 1000"
 insights_df = session.sql(base_query).to_pandas()
 
 if not insights_df.empty:
+    insights_df['DOCUMENT_TYPE'] = insights_df['DOCUMENT_TYPE'].str.replace('_', ' ').str.title()
+    insights_df['PRIORITY_LEVEL'] = insights_df['PRIORITY_LEVEL'].str.title()
+
     # Display count
     st.write(f"**Showing {len(insights_df):,} documents** (max 1,000)")
 
@@ -209,7 +213,7 @@ if not insights_df.empty:
     # Format columns
     display_df['Amount'] = display_df['Amount'].apply(lambda x: f"${x:,.2f}" if pd.notna(x) else "N/A")
     display_df['Confidence'] = display_df['Confidence'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "N/A")
-    display_df['Needs Review'] = display_df['Needs Review'].apply(lambda x: "⚠️ Yes" if x else "✅ No")
+    display_df['Needs Review'] = display_df['Needs Review'].apply(lambda x: "Yes" if x else "No")
 
     # Display as interactive table
     st.dataframe(
@@ -226,7 +230,7 @@ st.markdown("---")
 # SECTION 3: ANALYTICS & CHARTS
 # ============================================================================
 
-st.header("📈 Analytics")
+st.header("Analytics")
 
 if not insights_df.empty:
     # Create two columns for charts
@@ -282,24 +286,24 @@ st.markdown("---")
 # SECTION 4: MANUAL REVIEW QUEUE
 # ============================================================================
 
-st.header("⚠️ Manual Review Queue")
+st.header("Manual Review Queue")
 
 st.info("""
-**📋 Reference Implementation Note:**
+**Reference Implementation Note:**
 This section displays documents flagged for manual review based on low confidence scores or business rules.
 To build a production review workflow, consider these next steps:
 
 **Option 1: Interactive Streamlit Review UI**
 - Add expandable rows with `st.expander()` to show full document content
-- Implement approval/rejection buttons with `st.button()` or `st.form()`
+- Implement approval or rejection buttons with `st.button()` or `st.form()`
 - Create stored procedures to update review status: `CALL UPDATE_REVIEW_STATUS(...)`
 - Add user authentication and audit trail columns (reviewed_by, reviewed_at, notes)
 
 **Option 2: Export to External Review System**
 - Download queue data with `st.download_button()` as CSV
-- Integrate with existing ticketing systems (Jira, ServiceNow)
-- Use Snowflake tasks to send alerts via email/Slack
-- Sync review decisions back to Snowflake via API/Snowpipe
+- Integrate with existing ticketing systems
+- Use Snowflake alerts to notify reviewers
+- Sync review decisions back to Snowflake via API or Snowpipe
 
 **Option 3: Snowflake Native Workflow**
 - Create dedicated review tables with status columns
@@ -321,8 +325,8 @@ FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.FCT_DOCUMENT_INSIGHTS
 WHERE requires_manual_review = TRUE
 ORDER BY
     CASE metadata:priority_level::STRING
-        WHEN 'High' THEN 1
-        WHEN 'Medium' THEN 2
+        WHEN 'HIGH' THEN 1
+        WHEN 'MEDIUM' THEN 2
         ELSE 3
     END,
     overall_confidence_score ASC
@@ -347,19 +351,21 @@ if not review_df.empty:
     review_display.columns = ['Type', 'Vendor/Territory', 'Amount', 'Priority', 'Confidence', 'Created']
     review_display['Amount'] = review_display['Amount'].apply(lambda x: f"${x:,.2f}" if pd.notna(x) else "N/A")
     review_display['Confidence'] = review_display['Confidence'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "N/A")
+    review_display['Type'] = review_display['Type'].str.replace('_', ' ').str.title()
+    review_display['Priority'] = review_display['Priority'].str.title()
 
     st.dataframe(review_display, use_container_width=True, height=300)
 
     # Export option
     st.download_button(
-        label="⬇️ Export Review Queue to CSV",
+        label="Export Review Queue to CSV",
         data=review_display.to_csv(index=False).encode('utf-8'),
         file_name=f"review_queue_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
         mime="text/csv",
         help="Download this queue for offline review or import into external systems"
     )
 else:
-    st.success("✅ No documents currently require manual review!")
+    st.success("No documents currently require manual review.")
 
 # ============================================================================
 # FOOTER

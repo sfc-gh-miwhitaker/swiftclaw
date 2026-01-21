@@ -1,7 +1,7 @@
 # Prerequisites - AI Document Processing Demo
 
 **Author:** SE Community
-**Last Updated:** 2025-11-24
+**Last Updated:** 2026-01-21
 **Expires:** 2026-02-08
 
 ---
@@ -37,10 +37,10 @@ Creating API integrations requires ACCOUNTADMIN privileges. After deployment, us
 - **Monthly Cost:** < $0.50/month if left running
 
 ### Features Used
-- ✅ Snowflake Cortex AI Functions (Standard edition+)
-- ✅ Snowflake Git Integration (All editions)
-- ✅ Snowflake Streamlit (All editions)
-- ✅ Standard SQL & VARIANT data types (All editions)
+- Snowflake Cortex AI Functions (Standard edition+)
+- Snowflake Git Integration (All editions)
+- Snowflake Streamlit (All editions)
+- Standard SQL and VARIANT data types (All editions)
 
 ---
 
@@ -80,14 +80,14 @@ If you plan to modify the code locally (not required for deployment):
 
 ---
 
-## What's NOT Required
+## What's Not Required
 
-❌ External databases or storage
-❌ AWS/Azure/GCP accounts (Snowflake provides compute & storage)
-❌ Docker or container orchestration
-❌ SSH keys or VPN access
-❌ Additional software installations
-❌ Command-line expertise
+- External databases or storage
+- AWS/Azure/GCP accounts (Snowflake provides compute and storage)
+- Docker or container orchestration
+- SSH keys or VPN access
+- Additional software installations
+- Command-line expertise
 
 **This demo is 100% native Snowflake** - everything runs inside your Snowflake account.
 
@@ -95,7 +95,7 @@ If you plan to modify the code locally (not required for deployment):
 
 ## Next Steps
 
-Once prerequisites are met, proceed to [02-DEPLOYMENT.md](02-DEPLOYMENT.md) for step-by-step deployment instructions.
+Once prerequisites are met, run `deploy_all.sql` from Snowsight or follow the steps in `README.md`.
 
 ---
 

@@ -1,34 +1,34 @@
 /*******************************************************************************
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  *
- * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
+ * NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  *
  * DEMONSTRATION PROJECT - EXPIRES: 2026-02-08
  * This demo uses Snowflake AI Functions validated as of December 2025.
  * After expiration, this repository will be archived.
  *
- * 🚀 DESIGNED FOR "RUN ALL" EXECUTION:
- *   1. Copy this ENTIRE script (Ctrl+A or Cmd+A to select all)
- *   2. Open Snowsight → https://app.snowflake.com
- *   3. Create new worksheet: Click "+" → "SQL Worksheet"
+ * DESIGNED FOR "RUN ALL" EXECUTION:
+ *   1. Copy this entire script (Ctrl+A or Cmd+A to select all)
+ *   2. Open Snowsight: https://app.snowflake.com
+ *   3. Create new worksheet: Click "+" then "SQL Worksheet"
  *   4. Paste the entire script (Ctrl+V or Cmd+V)
- *   5. Click "Run All" button (▶️ dropdown → "Run All")
+ *   5. Click "Run All"
  *   6. Wait ~10 minutes - script executes all steps automatically
- *   7. No manual intervention required - fully automated deployment
+ *   7. No manual steps required
  *
  * WHAT THIS SCRIPT DOES:
  *   - Creates API integration for GitHub repository access
  *   - Creates Git repository stage with demo SQL scripts
  *   - Creates dedicated XSMALL warehouse for AI processing
  *   - Creates internal stage for document files (PDF, DOCX, etc.)
- *   - Executes setup, data, and REAL AI processing scripts from Git
+ *   - Copies sample PDFs into the internal stage
+ *   - Creates Dynamic Table pipeline (catalog, parse, translate, enrich, insights)
  *   - Deploys Streamlit dashboard for document processing UI
  *
  * AI FUNCTIONS USED (All GA/Production-Ready):
  *   - AI_PARSE_DOCUMENT: Extract text and layout from documents
  *   - AI_TRANSLATE: Translate multilingual content
- *   - AI_CLASSIFY: Categorize documents with enhanced descriptions
- *   - AI_EXTRACT: Extract entities without regex patterns
+ *   - AI_COMPLETE: Structured enrichment (classification + extraction)
  *
  * REQUIREMENTS:
  *   - ACCOUNTADMIN role (for API integration creation)
@@ -41,13 +41,13 @@
  *
  * CLEANUP:
  *   - Run sql/99_cleanup/teardown_all.sql to remove all objects
- *   - Or: DROP DATABASE SNOWFLAKE_EXAMPLE CASCADE;
+ *   - Or: DROP SCHEMA IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW CASCADE;
  *   - Or: DROP WAREHOUSE SFE_DOCUMENT_AI_WH;
  *   - Or: DROP API INTEGRATION SFE_GIT_API_INTEGRATION;
  *
  * GitHub Repository: https://github.com/sfc-gh-miwhitaker/swiftclaw
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-02-08 (30 days)
+ * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-08 (30 days)
  ******************************************************************************/
 
 -- ============================================================================
@@ -179,7 +179,7 @@ EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/
 -- (handles re-runs where prior cleanup dropped these objects)
 CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW
     DATA_RETENTION_TIME_IN_DAYS = 7
-    COMMENT = 'DEMO: swiftclaw - Project schema (raw/staging/analytics layers) | Expires: 2026-02-08 | Author: SE Community';
+    COMMENT = 'DEMO: swiftclaw - Project schema for dynamic tables | Expires: 2026-02-08 | Author: SE Community';
 
 CREATE STAGE IF NOT EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE
     ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
@@ -215,47 +215,15 @@ COPY FILES
 LS @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/ PATTERN = '.*\.pdf';
 
 -- ============================================================================
--- SECTION 7: DATA SCRIPTS (from Git Repository)
+-- SECTION 7: DYNAMIC TABLE PIPELINE (from Git Repository)
 -- ============================================================================
+-- This script creates the catalog view, Dynamic Tables, and monitoring view.
+-- New documents appear automatically once uploaded to the stage.
 
--- Execute: Create tables for raw documents
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/02_data/01_create_tables.sql;
-
--- Execute: Load sample documents (synthetic text-based data for quick demo)
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/02_data/02_load_sample_data.sql;
-
--- NOTE: To process REAL PDF documents from pdfs/ folder:
---   1. Open Streamlit dashboard → "📤 Upload Documents" page (sidebar)
---   2. Drag and drop PDFs, select document type and language
---   3. Follow on-screen instructions to complete upload to stage
---   4. Re-run AI processing scripts to analyze your documents
+EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/01_create_dynamic_tables.sql;
 
 -- ============================================================================
--- SECTION 8: AI PROCESSING SCRIPTS (from Git Repository)
--- ============================================================================
--- NOTE: These scripts use REAL Snowflake Cortex AI Functions
---       Requires documents to be uploaded to stage for processing
-
--- Execute: AI_PARSE_DOCUMENT - Extract text and layout from documents
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/01_parse_documents.sql;
-
--- Execute: AI_TRANSLATE - Translate non-English content to English
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/02_translate_content.sql;
-
--- Execute: AI_CLASSIFY - Classify documents by type and priority
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/03_classify_documents.sql;
-
--- Execute: AI_EXTRACT - Extract entities from documents
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/04_extract_entities.sql;
-
--- Execute: Aggregate insights - Combine all AI results
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_aggregate_insights.sql;
-
--- Execute: Create monitoring view - Real-time metrics
-EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/06_create_monitoring_view.sql;
-
--- ============================================================================
--- SECTION 9: STREAMLIT DASHBOARD
+-- SECTION 8: STREAMLIT DASHBOARD
 -- ============================================================================
 
 -- Create Streamlit app from Git repository
@@ -271,15 +239,15 @@ CREATE OR REPLACE STREAMLIT SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD
 SHOW STREAMLITS IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW;
 
 -- ============================================================================
--- SECTION 10: FINALIZE ROLE PERMISSIONS
+-- SECTION 9: FINALIZE ROLE PERMISSIONS
 -- ============================================================================
 
 -- Grant schema usage (single project schema)
 GRANT USAGE ON SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
 
--- Grant table access
+-- Grant table access (dynamic tables + views)
+GRANT SELECT ON ALL DYNAMIC TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
 GRANT SELECT ON ALL TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
-GRANT INSERT, UPDATE ON ALL TABLES IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
 
 -- Grant view access
 GRANT SELECT ON ALL VIEWS IN SCHEMA SNOWFLAKE_EXAMPLE.SWIFTCLAW TO ROLE SFE_DEMO_ROLE;
@@ -291,7 +259,7 @@ GRANT USAGE ON STREAMLIT SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD TO R
 GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
 
 /*******************************************************************************
- * SECTION 11: DEPLOYMENT COMPLETE
+ * SECTION 10: DEPLOYMENT COMPLETE
  *******************************************************************************
  *
  * Objects Created:
@@ -299,21 +267,21 @@ GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
  *   - Database: SNOWFLAKE_EXAMPLE
  *   - Warehouse: SFE_DOCUMENT_AI_WH (XSMALL)
  *   - Git Repository: sfe_swiftclaw_repo
- *   - Schema: SWIFTCLAW (raw/staging/analytics tables)
+ *   - Schema: SWIFTCLAW
  *   - Stage: DOCUMENT_STAGE (for file uploads)
- *   - Tables: 8 tables (catalog, logs, staging, analytics)
- *   - AI Processing: PARSE → TRANSLATE → CLASSIFY → EXTRACT pipeline
+ *   - Dynamic Tables: STG_PARSED_DOCUMENTS, STG_TRANSLATED_CONTENT,
+ *     STG_ENRICHED_DOCUMENTS, FCT_DOCUMENT_INSIGHTS
+ *   - Views: RAW_DOCUMENT_CATALOG, V_PROCESSING_METRICS
  *   - Streamlit: SFE_DOCUMENT_DASHBOARD
  *   - Role: SFE_DEMO_ROLE
  *
  * Next Steps:
- *   1. Upload documents (optional):
+ *   1. Upload documents to the stage (optional):
  *      PUT file:///*.pdf @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE AUTO_COMPRESS=FALSE;
  *   2. Switch role: USE ROLE SFE_DEMO_ROLE;
- *   3. Open Streamlit: Home → Streamlit → SFE_DOCUMENT_DASHBOARD
+ *   3. Open Streamlit: Home -> Streamlit -> SFE_DOCUMENT_DASHBOARD
  *   4. View insights: SELECT * FROM SWIFTCLAW.FCT_DOCUMENT_INSIGHTS LIMIT 10;
  *   5. View metrics: SELECT * FROM SWIFTCLAW.V_PROCESSING_METRICS;
- *   6. Check document catalog: SELECT * FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG;
  *
  * Documentation:
  *   - README: https://github.com/sfc-gh-miwhitaker/swiftclaw/blob/main/README.md

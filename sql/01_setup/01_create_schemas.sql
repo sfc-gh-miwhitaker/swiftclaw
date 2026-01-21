@@ -2,14 +2,11 @@
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Create Database Schemas
  *
- * ⚠️  NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
+ * NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  *
  * PURPOSE:
- *   Create three-layered schema architecture for AI document processing:
- *   - SWIFTCLAW: Project schema containing raw/staging/analytics layers
- *     - RAW_* tables: Raw binary document storage
- *     - STG_* tables: AI processing results (parsed, translated, classified)
- *     - FCT_*, V_*: Business insights and metrics
+ *   Create project schema and internal stage for AI document processing.
+ *   Dynamic Tables and views are created by the AI pipeline script.
  *
  * OBJECTS CREATED:
  *   - SNOWFLAKE_EXAMPLE.SWIFTCLAW (schema)
@@ -18,7 +15,7 @@
  *   See sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-02-08
+ * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-08
  ******************************************************************************/
 
 -- Set context (ensure ACCOUNTADMIN role for schema creation)

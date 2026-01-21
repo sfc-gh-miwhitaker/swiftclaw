@@ -2,11 +2,11 @@
  * DEMO PROJECT: AI Document Processing for Entertainment Industry
  * Script: Complete Teardown
  *
- * ⚠️  THIS WILL DELETE ALL DEMO OBJECTS - USE WITH CAUTION
+ * THIS WILL DELETE ALL DEMO OBJECTS - USE WITH CAUTION
  *
  * PURPOSE:
  *   Remove all objects created by this demo, including:
- *   - Project schema: SWIFTCLAW (tables, view, stage, Streamlit)
+ *   - Project schema: SWIFTCLAW (dynamic tables, views, stage, Streamlit)
  *   - Git repository stage
  *   - Dedicated warehouse
  *   - API integration
@@ -17,13 +17,13 @@
  *   - SNOWFLAKE_EXAMPLE.GIT_REPOS schema (shared across demos)
  *   - Shared API integrations (if used by other demos)
  *
- * 🗑️  DESIGNED FOR "RUN ALL" EXECUTION:
+ * DESIGNED FOR "RUN ALL" EXECUTION:
  *   1. Copy this ENTIRE script (Ctrl+A or Cmd+A to select all)
- *   2. Open Snowsight → https://app.snowflake.com
- *   3. Create new worksheet: Click "+" → "SQL Worksheet"
+ *   2. Open Snowsight: https://app.snowflake.com
+ *   3. Create new worksheet: Click "+" then "SQL Worksheet"
  *   4. Paste the entire script (Ctrl+V or Cmd+V)
  *   5. REVIEW the warning summary below (lines 47-62)
- *   6. Click "Run All" button (▶️ dropdown → "Run All")
+ *   6. Click "Run All"
  *   7. All demo objects will be deleted immediately
  *   8. No undo available - objects are permanently removed
  *
@@ -31,7 +31,7 @@
  *   snowsql -f sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2025-12-10 | Expires: 2026-02-08
+ * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-08
  ******************************************************************************/
 
 -- Switch to ACCOUNTADMIN for cleanup
@@ -52,13 +52,14 @@ USE ROLE ACCOUNTADMIN;
 -- SHOW WAREHOUSES LIKE 'SFE_%';
 
 -- ============================================================================
--- ⚠️  WARNING SUMMARY (Review before executing)
+-- WARNING SUMMARY (Review before executing)
 -- ============================================================================
 --
 -- When you click "Run All", these objects will be IMMEDIATELY deleted:
 --   - Streamlit app: SFE_DOCUMENT_DASHBOARD
---   - Schema: SWIFTCLAW (tables + view + stage)
---   - 8 tables + 1 view across the schema
+--   - Schema: SWIFTCLAW (dynamic tables, views, stage)
+--   - Dynamic tables: 4
+--   - Views: 2
 --   - Warehouse: SFE_DOCUMENT_AI_WH
 --   - Git repository: sfe_swiftclaw_repo
 --   - API Integration: SFE_GIT_API_INTEGRATION
@@ -76,9 +77,9 @@ USE ROLE ACCOUNTADMIN;
 -- CLEANUP EXECUTION ORDER
 -- ============================================================================
 -- Objects are dropped in dependency order:
---   1. Streamlit apps (depend on schemas/tables)
---   2. Views (depend on tables)
---   3. Tables (depend on schemas)
+--   1. Streamlit apps (depend on schemas)
+--   2. Views (depend on dynamic tables)
+--   3. Dynamic tables (depend on schemas)
 --   4. Schemas (depend on database)
 --   5. Git repositories (can be dropped anytime)
 --   6. Warehouses (can be dropped anytime)
@@ -99,23 +100,23 @@ DROP STREAMLIT IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.SFE_DOCUMENT_DASHBOARD;
 -- ============================================================================
 
 DROP VIEW IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.V_PROCESSING_METRICS;
+DROP VIEW IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_CATALOG;
 
 -- View has been dropped
 
 -- ============================================================================
--- STEP 3: DROP TABLES (in dependency order)
+-- STEP 3: DROP DYNAMIC TABLES (in dependency order)
 -- ============================================================================
 
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.FCT_DOCUMENT_INSIGHTS;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_EXTRACTED_ENTITIES;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_CLASSIFIED_DOCS;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_TRANSLATED_CONTENT;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_PARSED_DOCUMENTS;
+DROP DYNAMIC TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.FCT_DOCUMENT_INSIGHTS;
+DROP DYNAMIC TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_ENRICHED_DOCUMENTS;
+DROP DYNAMIC TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_TRANSLATED_CONTENT;
+DROP DYNAMIC TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.STG_PARSED_DOCUMENTS;
+
 DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_ERRORS;
 DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_PROCESSING_LOG;
-DROP TABLE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.RAW_DOCUMENT_CATALOG;
 
--- All tables have been dropped (8 total)
+-- Dynamic tables have been dropped
 
 -- ============================================================================
 -- STEP 4: DROP SCHEMAS
@@ -190,21 +191,22 @@ SHOW ROLES LIKE 'SFE_%';
 SHOW GIT REPOSITORIES IN SCHEMA SNOWFLAKE_EXAMPLE.GIT_REPOS;
 
 -- ============================================================================
--- ✅ CLEANUP COMPLETE
+-- CLEANUP COMPLETE
 -- ============================================================================
 --
 -- Removed Objects:
---   ✓ Streamlit app: SFE_DOCUMENT_DASHBOARD
---   ✓ Schema: SWIFTCLAW (tables, view, stage)
---   ✓ 8 tables + 1 view
---   ✓ Warehouse: SFE_DOCUMENT_AI_WH
---   ✓ Git repository: sfe_swiftclaw_repo
---   ✓ API Integration: SFE_GIT_API_INTEGRATION (if not shared)
---   ✓ Role: SFE_DEMO_ROLE
+--   - Streamlit app: SFE_DOCUMENT_DASHBOARD
+--   - Schema: SWIFTCLAW (dynamic tables, views, stage)
+--   - Dynamic tables: 4
+--   - Views: 2
+--   - Warehouse: SFE_DOCUMENT_AI_WH
+--   - Git repository: sfe_swiftclaw_repo
+--   - API Integration: SFE_GIT_API_INTEGRATION (if not shared)
+--   - Role: SFE_DEMO_ROLE
 --
 -- Preserved Objects (Shared Infrastructure):
---   • SNOWFLAKE_EXAMPLE database (may contain other demos)
---   • SNOWFLAKE_EXAMPLE.GIT_REPOS schema (may contain other repos)
+--   - SNOWFLAKE_EXAMPLE database (may contain other demos)
+--   - SNOWFLAKE_EXAMPLE.GIT_REPOS schema (may contain other repos)
 --
 -- Verification Commands:
 --   Run the SHOW commands above to confirm cleanup

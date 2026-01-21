@@ -27,24 +27,22 @@ This demo showcases **REAL** Snowflake Cortex AI Functions for automating docume
 - **Multilingual Support**: Translate content while preserving proper nouns and industry terminology
 - **Business Intelligence**: Interactive Streamlit dashboard with real-time AI metrics
 
-### AI Pipeline (100% Real - No Simulation):
+### AI Pipeline (Dynamic Tables):
 
 ```
-Documents on Stage → AI_PARSE_DOCUMENT → AI_TRANSLATE → AI_CLASSIFY → AI_EXTRACT → Analytics
+Documents on Stage -> AI_PARSE_DOCUMENT -> AI_TRANSLATE (non-EN) -> AI_COMPLETE -> Analytics
 ```
 
 **Production-Ready AI Functions:**
-- 🤖 **AI_PARSE_DOCUMENT** - Extract text and layout from PDF/DOCX files on stages (GA)
-- 🌐 **AI_TRANSLATE** - Context-aware translation for 20+ languages (GA)
-  - 🔬 **Quality Test**: Russian names preservation (occupation-based surnames like "Baker", "Smith")
-- 🔍 **AI_CLASSIFY** - Multi-label classification with enhanced category descriptions (GA)
-- 🎯 **AI_EXTRACT** - Intelligent entity extraction without regex patterns (NEW!)
-- 📊 **SQL Aggregation** - Standard SQL for business insights
-- 📱 **Streamlit UI** - Business-user friendly dashboard with real-time metrics
+- **AI_PARSE_DOCUMENT** - Extract text and layout from PDF/DOCX files on stages (GA)
+- **AI_TRANSLATE** - Context-aware translation for 20+ languages (GA)
+- **AI_COMPLETE** - Structured enrichment (classification + extraction) with JSON schema (GA)
+- **SQL Aggregation** - Standard SQL for business insights
+- **Streamlit UI** - Business-user friendly dashboard with real-time metrics
 
 ---
 
-## 👋 First Time Here?
+## First Time Here?
 
 Follow these steps in order to deploy and explore the demo:
 
@@ -59,26 +57,16 @@ Follow these steps in order to deploy and explore the demo:
    - Click "Run All"
    - Wait ~10 minutes for complete deployment
 
-3. **Upload Real PDFs** (5 min) - *Optional but recommended*
-   - Open Streamlit: Home → Streamlit → `SFE_DOCUMENT_DASHBOARD`
-   - Click **📤 Upload Documents** in sidebar
-   - Drag and drop PDFs from `pdfs/` folder (6 multilingual bridge contracts)
-   - Follow on-screen instructions to complete upload
-   - Run AI processing scripts from the Upload page
-
-4. **Explore Results** (15 min)
+3. **Explore Results** (15 min)
+   - Optional: Upload PDFs to the stage (see "Uploading Your Own PDF Documents")
+   - Open Streamlit: Home -> Streamlit -> `SFE_DOCUMENT_DASHBOARD`
    - Read `docs/02-USAGE.md`
-   - View document insights in the main dashboard
-   - Review AI parsing, translation, classification results
-   - Explore charts and manual review queue
+   - Review insights, charts, and manual review queue
+   - Cleanup when finished: run `sql/99_cleanup/teardown_all.sql`
 
-5. **Cleanup** (2 min)
-   - Read `docs/03-CLEANUP.md`
-   - Run `sql/99_cleanup/teardown_all.sql`
+**Total setup time: ~30 minutes**
 
-**Total setup time: ~35 minutes (including PDF upload)**
-
-**📋 Additional Documentation:**
+**Additional Documentation:**
 - `docs/05-CHANGELOG-UPDATETHEWORLD.md` - Modernization updates (2025-12-09)
 
 ---
@@ -96,10 +84,10 @@ Leverage Snowflake AI Functions to:
 - Generate aggregated insights for financial teams
 
 **Business Impact:**
-- ⏱️ 90% reduction in manual processing time
-- ✅ 95%+ accuracy in data extraction
-- 🌍 Support for 10+ languages
-- 📈 Faster financial closing processes
+- 90% reduction in manual processing time
+- 95%+ accuracy in data extraction
+- Support for 10+ languages
+- Faster financial closing processes
 
 ---
 
@@ -109,38 +97,34 @@ Leverage Snowflake AI Functions to:
 
 ```
 1. UPLOAD
-   Documents (PDF/DOCX) → @DOCUMENT_STAGE (Snowflake Internal Stage)
+   Documents (PDF/DOCX) -> @DOCUMENT_STAGE (Snowflake internal stage)
 
 2. CATALOG
-   Document metadata → DOCUMENT_CATALOG (tracks processing status)
+   Stage directory -> RAW_DOCUMENT_CATALOG (view)
 
-3. AI PROCESSING (All Real Snowflake AI Functions)
-   ├─ AI_PARSE_DOCUMENT → Extract text + layout (OCR or LAYOUT mode)
-   ├─ AI_TRANSLATE → Translate non-English content (20+ languages)
-   ├─ AI_CLASSIFY → Categorize by type/priority (enhanced descriptions)
-   └─ AI_EXTRACT → Extract entities (no regex required!)
+3. AI PROCESSING (Dynamic Tables)
+   - STG_PARSED_DOCUMENTS (AI_PARSE_DOCUMENT)
+   - STG_TRANSLATED_CONTENT (AI_TRANSLATE)
+   - STG_ENRICHED_DOCUMENTS (AI_COMPLETE structured output)
 
-4. AGGREGATION
-   SQL joins → FCT_DOCUMENT_INSIGHTS (business metrics)
+4. INSIGHTS
+   FCT_DOCUMENT_INSIGHTS (aggregated metrics)
 
 5. MONITORING
-   V_PROCESSING_METRICS → Real-time pipeline health
+   V_PROCESSING_METRICS (pipeline health)
 
 6. VISUALIZATION
-   Streamlit Dashboard → Interactive UI for business users
+   Streamlit Dashboard (business UI)
 ```
 
 ### Database Architecture
 
 **Project Schema** (`SWIFTCLAW`):
-- `RAW_DOCUMENT_CATALOG` - Document metadata and stage paths
-- `RAW_DOCUMENT_PROCESSING_LOG` - Audit trail for AI operations
-- `RAW_DOCUMENT_ERRORS` - Error tracking and retry management
-- `STG_PARSED_DOCUMENTS` - AI_PARSE_DOCUMENT results
-- `STG_TRANSLATED_CONTENT` - AI_TRANSLATE results
-- `STG_CLASSIFIED_DOCS` - AI_CLASSIFY results
-- `STG_EXTRACTED_ENTITIES` - AI_EXTRACT results
-- `FCT_DOCUMENT_INSIGHTS` - Aggregated business insights
+- `RAW_DOCUMENT_CATALOG` - Stage directory view with document metadata
+- `STG_PARSED_DOCUMENTS` - AI_PARSE_DOCUMENT results (dynamic table)
+- `STG_TRANSLATED_CONTENT` - AI_TRANSLATE results (dynamic table)
+- `STG_ENRICHED_DOCUMENTS` - AI_COMPLETE structured enrichment (dynamic table)
+- `FCT_DOCUMENT_INSIGHTS` - Aggregated business insights (dynamic table)
 - `V_PROCESSING_METRICS` - Real-time monitoring view
 
 See `diagrams/` for detailed architecture diagrams.
@@ -158,15 +142,12 @@ See `diagrams/` for detailed architecture diagrams.
 ### Database Objects (in SNOWFLAKE_EXAMPLE)
 | Object Type | Schema | Name | Purpose |
 |-------------|--------|------|---------|
-| Schema | - | `SWIFTCLAW` | Project schema (raw, staging, analytics) |
-| Table | `SWIFTCLAW` | `RAW_DOCUMENT_CATALOG` | Document metadata + stage paths |
-| Table | `SWIFTCLAW` | `RAW_DOCUMENT_PROCESSING_LOG` | Processing audit |
-| Table | `SWIFTCLAW` | `RAW_DOCUMENT_ERRORS` | Error tracking |
-| Table | `SWIFTCLAW` | `STG_PARSED_DOCUMENTS` | AI parsing results |
-| Table | `SWIFTCLAW` | `STG_TRANSLATED_CONTENT` | Translated text |
-| Table | `SWIFTCLAW` | `STG_CLASSIFIED_DOCS` | Document classifications |
-| Table | `SWIFTCLAW` | `STG_EXTRACTED_ENTITIES` | Entity extraction results |
-| Table | `SWIFTCLAW` | `FCT_DOCUMENT_INSIGHTS` | Aggregated metrics |
+| Schema | - | `SWIFTCLAW` | Project schema |
+| View | `SWIFTCLAW` | `RAW_DOCUMENT_CATALOG` | Stage directory metadata |
+| Dynamic Table | `SWIFTCLAW` | `STG_PARSED_DOCUMENTS` | AI parsing results |
+| Dynamic Table | `SWIFTCLAW` | `STG_TRANSLATED_CONTENT` | Translated text |
+| Dynamic Table | `SWIFTCLAW` | `STG_ENRICHED_DOCUMENTS` | AI_COMPLETE enrichment |
+| Dynamic Table | `SWIFTCLAW` | `FCT_DOCUMENT_INSIGHTS` | Aggregated metrics |
 | View | `SWIFTCLAW` | `V_PROCESSING_METRICS` | Monitoring dashboard |
 | Streamlit | `SWIFTCLAW` | `SFE_DOCUMENT_DASHBOARD` | Interactive UI |
 
@@ -191,7 +172,7 @@ See `diagrams/` for detailed architecture diagrams.
 - Storage: Sample data only (~1GB)
 - No scheduled tasks (on-demand processing only)
 
-**Recommendation:** Deploy for demo → cleanup after 30 days
+**Recommendation:** Deploy for demo, then clean up after 30 days
 
 ---
 
@@ -200,8 +181,7 @@ See `diagrams/` for detailed architecture diagrams.
 **Snowflake Cortex AI Functions (All GA/Production-Ready):**
 - **AI_PARSE_DOCUMENT** - Document parsing with OCR and layout extraction
 - **AI_TRANSLATE** - Neural machine translation (20+ languages)
-- **AI_CLASSIFY** - Zero-shot text classification with enhanced descriptions
-- **AI_EXTRACT** - Semantic entity extraction without regex
+- **AI_COMPLETE** - Structured enrichment with JSON schema
 
 **Snowflake Platform Features:**
 - **Internal Stages** - Document storage (@DOCUMENT_STAGE)
@@ -219,70 +199,58 @@ See `diagrams/` for detailed architecture diagrams.
 
 This demo is designed for complete execution within Snowflake with no external dependencies:
 
-- **Deployment:** Copy/paste `deploy_all.sql` into Snowsight → Click "Run All" (10 min)
+- **Deployment:** Copy/paste `deploy_all.sql` into Snowsight, then click "Run All" (10 min)
 - **UI:** Native Snowflake Streamlit app (no local web server)
 - **Processing:** All AI operations run on Snowflake compute (no external ML services)
 - **Storage:** All data stays in Snowflake (no external databases)
 - **Tools Required:** None - Just a web browser and Snowflake account
 
 **Why This Matters:**
-- ✅ No local Python/Node.js runtime needed
-- ✅ No `tools/` scripts or command-line utilities
-- ✅ No environment setup or dependency installation
-- ✅ Works from any device with browser access to Snowsight
-- ✅ Follows "User Experience Principle" - minimal friction, maximum simplicity
+- No local Python/Node.js runtime needed
+- No `tools/` scripts or command-line utilities
+- No environment setup or dependency installation
+- Works from any device with browser access to Snowsight
+- Follows the "User Experience Principle" with minimal friction
 
 **Architecture Compliance:** This demonstrates the **Native Snowflake Architecture** pattern mandated by core rules - all workloads execute inside Snowflake unless technically impossible.
 
-**Real AI Processing:** All AI function calls are real - no simulation, no mocking. The demo uses actual Snowflake Cortex AI Functions that are production-ready (GA). Upload your own PDFs to see real AI parsing, translation, classification, and extraction in action!
+**Real AI Processing:** All AI function calls are real with no simulation. The demo uses Snowflake Cortex AI Functions that are production-ready (GA). Upload your own PDFs to see parsing, translation, and structured enrichment in action.
 
 ---
 
 ## Uploading Your Own PDF Documents
 
-The demo includes 6 multilingual bridge loan contract PDFs in the `pdfs/` folder. Here's how to process them with AI Functions:
+Sample PDFs are copied to the internal stage during deployment. To add your own documents, upload PDF files directly to the stage. Dynamic Tables pick up new files automatically within the target lag window.
 
-### Upload via Streamlit UI (Drag & Drop)
+### Upload via Snowsight
 
-1. **Deploy the demo** - Run `deploy_all.sql` in Snowsight (10 minutes)
+1. Open **Data** -> **Databases** -> **SNOWFLAKE_EXAMPLE** -> **SWIFTCLAW** -> **Stages**
+2. Select **DOCUMENT_STAGE**
+3. Upload PDF files into one of these folders:
+   - `invoices/`
+   - `royalty/`
+   - `contracts/`
+   - `other/`
 
-2. **Open the Upload page** - Navigate to the Streamlit dashboard:
-   - Home → Streamlit → `SFE_DOCUMENT_DASHBOARD`
-   - Click **📤 Upload Documents** in the sidebar
+### Upload via SQL (PUT)
 
-3. **Upload your PDFs** - Drag and drop files:
-   - Select document type (Invoice, Royalty Statement, Contract, Other)
-   - Select original language (EN, ES, DE, PT, RU, ZH, FR, JA, KO)
-   - Drag PDFs from `pdfs/` folder into the upload area
-   - Click to browse and select multiple files at once
-
-4. **Wait for cataloging** - Files are registered in the catalog automatically
-
-5. **Complete the upload** - Follow the on-screen instructions:
-   - Navigate to: **Data** → **Databases** → **SNOWFLAKE_EXAMPLE** → **SWIFTCLAW** → **Stages**
-   - Click **DOCUMENT_STAGE** → **"+ Files"** → **contracts/** directory
-   - Upload the same PDFs to complete the process
-   - Verify files appear in stage listing
-
-6. **Process with AI** - Run the processing pipeline from Snowsight:
 ```sql
 USE ROLE ACCOUNTADMIN;
 USE DATABASE SNOWFLAKE_EXAMPLE;
 USE WAREHOUSE SFE_DOCUMENT_AI_WH;
 
--- Run AI processing pipeline
-EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/01_parse_documents.sql;
-EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/02_translate_content.sql;
-EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/03_classify_documents.sql;
-EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/04_extract_entities.sql;
-EXECUTE IMMEDIATE FROM @GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/05_aggregate_insights.sql;
+PUT file://path/to/*.pdf @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE/invoices/ AUTO_COMPRESS=FALSE;
 ```
 
-7. **View results** - Return to the Streamlit dashboard to see AI insights!
+### File Naming Conventions
+
+- Use folder names to set document type.
+- Use a language code in the filename to set language (for example: `invoice_en_001.pdf`, `contract_es_003.pdf`).
+- If no language code is found, English is assumed.
 
 ### Included PDF Documents
 
-The `pdfs/` folder contains 6 multilingual bridge loan contracts:
+The `pdfs/` folder contains multilingual bridge loan contracts:
 
 | File | Language | Pages | Use Case |
 |------|----------|-------|----------|
@@ -297,13 +265,11 @@ The `pdfs/` folder contains 6 multilingual bridge loan contracts:
 
 **Server-Side Encryption (SSE):**
 - All documents encrypted at rest with `ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')`
-- Automatic encryption/decryption (transparent to AI Functions)
+- Automatic encryption and decryption (transparent to AI Functions)
 - Zero configuration required
 
 **Access Controls:**
-- Role-based access to stage and catalog
-- Audit trail in `DOCUMENT_PROCESSING_LOG`
-- Error tracking in `DOCUMENT_ERRORS`
+- Role-based access to stage and views
 
 ---
 
@@ -321,11 +287,11 @@ SELECT
         OBJECT_CONSTRUCT('mode', 'LAYOUT')                        -- Options: 'OCR' or 'LAYOUT'
     ) AS parsed_document;
 
--- Or using catalog table (stage and path stored separately):
+-- Or using catalog view (stage and path stored separately):
 SELECT
     catalog.document_id,
     AI_PARSE_DOCUMENT(
-        TO_FILE(catalog.stage_name, catalog.file_path),  -- Simple!
+        TO_FILE(catalog.stage_name, catalog.file_path),
         OBJECT_CONSTRUCT('mode', 'LAYOUT')
     ) AS parsed_document
 FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog
@@ -337,7 +303,6 @@ SELECT
     document_id,
     extraction_mode,
     page_count,
-    confidence_score,
     parsed_content:text::STRING AS extracted_text
 FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
 LIMIT 5;
@@ -347,16 +312,13 @@ LIMIT 5;
 ```sql
 -- Translate non-English documents to English
 SELECT
-    parsed_id,
     source_language,
     AI_TRANSLATE(
-        parsed_content:text::STRING,
+        source_text,
         source_language,   -- 'es', 'fr', 'de', etc. (or '' for auto-detect)
         'en'               -- Target language
     ) AS translated_text
-FROM SWIFTCLAW.STG_PARSED_DOCUMENTS parsed
-JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
-WHERE catalog.original_language <> 'en'
+FROM SWIFTCLAW.STG_TRANSLATED_CONTENT
 LIMIT 5;
 
 -- View translation results
@@ -364,103 +326,26 @@ SELECT
     source_language,
     target_language,
     SUBSTR(source_text, 1, 100) AS source_preview,
-    SUBSTR(translated_text, 1, 100) AS translated_preview,
-    translation_confidence
+    SUBSTR(translated_text, 1, 100) AS translated_preview
 FROM SWIFTCLAW.STG_TRANSLATED_CONTENT
 LIMIT 5;
 ```
 
-### 3. Classify Documents by Type
+### 3. Enrich with AI_COMPLETE Structured Output
 
-**Basic Classification:**
 ```sql
 SELECT
     document_id,
-    AI_CLASSIFY(
-        parsed_content:extracted_text::STRING,
-        ['Invoice', 'Royalty Statement', 'Contract', 'Other']
-    ):label::STRING AS document_classification,
-    AI_CLASSIFY(
-        parsed_content:extracted_text::STRING,
-        ['Invoice', 'Royalty Statement', 'Contract', 'Other']
-    ):confidence::FLOAT AS classification_confidence
-FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
+    document_type,
+    priority_level,
+    total_amount,
+    currency,
+    document_date,
+    vendor_territory,
+    confidence_score
+FROM SWIFTCLAW.STG_ENRICHED_DOCUMENTS
 LIMIT 10;
 ```
-
-**Enhanced Classification with Category Descriptions:**
-```sql
--- Using category descriptions for improved accuracy
-SELECT
-    document_id,
-    AI_CLASSIFY(
-        parsed_content:extracted_text::STRING,
-        [
-            {
-                'category': 'Invoice',
-                'description': 'Billing documents requesting payment with line items and amounts due',
-                'examples': ['Net 30 payment terms', 'remit payment to', 'invoice number']
-            },
-            {
-                'category': 'Royalty Statement',
-                'description': 'Periodic reports showing rights usage, units sold, and royalty payments by territory',
-                'examples': ['territory performance', 'title royalties', 'payment period']
-            },
-            {
-                'category': 'Contract',
-                'description': 'Legal agreements between parties outlining terms, conditions, and obligations',
-                'examples': ['party A and party B', 'effective date', 'confidentiality provisions']
-            },
-            {
-                'category': 'Other',
-                'description': 'Documents that do not fit the above categories'
-            }
-        ]
-    ):label::STRING AS enhanced_classification
-FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
-LIMIT 10;
-```
-
-### 4. Extract Entities with AI_EXTRACT (No Regex Required!)
-
-**Intelligent entity extraction without patterns:**
-```sql
--- Extract multiple invoice fields in one AI call
-SELECT
-    parsed_id,
-    AI_EXTRACT(
-        parsed_content:text::STRING,
-        {
-            'invoice_number': 'The unique identifier for this invoice',
-            'total_amount': 'The total amount due in US dollars',
-            'vendor_name': 'The name of the vendor or company',
-            'invoice_date': 'The date when the invoice was issued',
-            'due_date': 'The payment due date',
-            'payment_terms': 'The payment terms (e.g., Net 30, Net 60)'
-        }
-    ) AS extracted_entities
-FROM SWIFTCLAW.STG_PARSED_DOCUMENTS
-WHERE document_id IN (SELECT document_id FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG WHERE document_type = 'INVOICE')
-LIMIT 5;
-
--- View extracted entities (flattened)
-SELECT
-    catalog.document_type,
-    entity.entity_type,
-    entity.entity_value,
-    entity.extraction_confidence
-FROM SWIFTCLAW.STG_EXTRACTED_ENTITIES entity
-JOIN SWIFTCLAW.STG_PARSED_DOCUMENTS parsed ON entity.parsed_id = parsed.parsed_id
-JOIN SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog ON parsed.document_id = catalog.document_id
-LIMIT 20;
-```
-
-**Why AI_EXTRACT beats regex:**
-- ✅ No pattern maintenance as formats change
-- ✅ Handles layout variations automatically
-- ✅ Understands semantic meaning, not just text patterns
-- ✅ Multi-field extraction in single API call
-- ✅ Works across different document formats
 
 ---
 
