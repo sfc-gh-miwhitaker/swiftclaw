@@ -35,7 +35,8 @@ flowchart TB
         subgraph aiLayer [AI Services Layer]
             Parse[AI_PARSE_DOCUMENT]
             Translate[AI_TRANSLATE]
-            Complete[AI_COMPLETE]
+            Extract[AI_EXTRACT]
+            Classify[AI_CLASSIFY]
         end
 
         subgraph storageLayer [Storage Layer]
@@ -56,11 +57,13 @@ flowchart TB
 
     WH -->|AI Calls| Parse
     WH -->|AI Calls| Translate
-    WH -->|AI Calls| Complete
+    WH -->|AI Calls| Extract
+    WH -->|AI Calls| Classify
 
     Parse -->|Write Results| DB
     Translate -->|Write Results| DB
-    Complete -->|Write Results| DB
+    Extract -->|Write Results| DB
+    Classify -->|Write Results| DB
 
     Streamlit -->|Query Data| DB
     Streamlit -->|Render UI| User
@@ -100,7 +103,8 @@ flowchart TB
 **Cortex AI Functions**
 - `AI_PARSE_DOCUMENT`  
 - `AI_TRANSLATE`  
-- `AI_COMPLETE`  
+- `AI_EXTRACT`  
+- `AI_CLASSIFY`  
 
 ### Storage and Integration
 

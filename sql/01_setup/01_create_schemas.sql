@@ -15,7 +15,7 @@
  *   See sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-20
+ * Created: 2025-11-24 | Updated: 2026-02-17 | Expires: 2026-02-20
  ******************************************************************************/
 
 -- Set context (ensure ACCOUNTADMIN role for schema creation)

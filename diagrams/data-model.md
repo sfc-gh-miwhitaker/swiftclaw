@@ -73,7 +73,6 @@ erDiagram
         string currency
         date document_date
         string vendor_territory
-        number processing_time_seconds
         number overall_confidence_score
         boolean requires_manual_review
         string manual_review_reason
@@ -86,7 +85,7 @@ erDiagram
 
 - `RAW_DOCUMENT_CATALOG` is a table refreshed from the stage directory by a task.
 - STG_PARSED_DOCUMENTS and STG_TRANSLATED_CONTENT are Dynamic Tables.
-- STG_ENRICHED_DOCUMENTS is populated by a scheduled task.
+- STG_ENRICHED_DOCUMENTS is a Dynamic Table using AI_EXTRACT + AI_CLASSIFY for structured enrichment.
 - `FCT_DOCUMENT_INSIGHTS` is the primary analytics table used by the Streamlit dashboard.
 
 ---

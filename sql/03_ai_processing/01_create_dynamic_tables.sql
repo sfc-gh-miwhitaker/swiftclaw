@@ -4,24 +4,34 @@
  *
  * PURPOSE:
  *   Create a simplified AI document pipeline using Dynamic Tables for
- *   automated orchestration and AI_COMPLETE structured output for enrichment.
+ *   automated orchestration, AI_EXTRACT for entity extraction, and AI_CLASSIFY
+ *   for document type classification.
  *
  * OBJECTS CREATED:
  *   - RAW_DOCUMENT_CATALOG (table): Stage directory metadata
  *   - REFRESH_DOCUMENT_CATALOG (procedure)
  *   - REFRESH_DOCUMENT_CATALOG_TASK (task)
- *   - STG_PARSED_DOCUMENTS (dynamic table)
- *   - STG_TRANSLATED_CONTENT (dynamic table)
- *   - STG_ENRICHED_DOCUMENTS (dynamic table)
- *   - FCT_DOCUMENT_INSIGHTS (dynamic table)
- *   - V_PROCESSING_METRICS (view)
+ *   - STG_PARSED_DOCUMENTS (dynamic table, incremental, extract_images)
+ *   - STG_TRANSLATED_CONTENT (dynamic table, incremental)
+ *   - STG_ENRICHED_DOCUMENTS (dynamic table, AI_EXTRACT + AI_CLASSIFY)
+ *   - FCT_DOCUMENT_INSIGHTS (dynamic table, incremental)
+ *   - V_PROCESSING_METRICS (view, optimized)
+ *
+ * MODERNIZATION (2026-02-17):
+ *   - AI_EXTRACT (GA Oct 2025): Replaced AI_COMPLETE for structured extraction
+ *   - AI_CLASSIFY (GA Jun 2025): Purpose-built document type classification
+ *   - AI_PARSE_DOCUMENT extract_images: Image extraction enabled (Preview)
+ *   - REFRESH_MODE = INCREMENTAL on all Dynamic Tables (cost optimization)
+ *   - STG_ENRICHED_DOCUMENTS converted from Task+Procedure to Dynamic Table
+ *   - V_PROCESSING_METRICS: 14 subqueries -> 5 scans (conditional aggregation)
+ *   - OBJECT_CONSTRUCT replaced with object literal syntax
  *
  * REQUIREMENTS:
  *   - Documents uploaded to @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE
  *   - SNOWFLAKE.CORTEX_USER database role granted
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-20
+ * Created: 2025-11-24 | Updated: 2026-02-17 | Expires: 2026-02-20
  ******************************************************************************/
 
 USE ROLE ACCOUNTADMIN;
@@ -91,11 +101,11 @@ BEGIN
                 'en'
             ) AS original_language,
             last_modified::TIMESTAMP_NTZ AS upload_date,
-            OBJECT_CONSTRUCT(
-                'source', 'stage_directory',
-                'directory', SPLIT_PART(relative_path, '/', 1),
-                'file_md5', md5
-            ) AS metadata
+            {
+                'source': 'stage_directory',
+                'directory': SPLIT_PART(relative_path, '/', 1),
+                'file_md5': md5
+            } AS metadata
         FROM DIRECTORY(@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE)
         WHERE LOWER(relative_path) LIKE '%.pdf'
     ) AS src
@@ -156,6 +166,7 @@ ALTER TASK REFRESH_DOCUMENT_CATALOG_TASK RESUME;
 CREATE OR REPLACE DYNAMIC TABLE STG_PARSED_DOCUMENTS
     TARGET_LAG = '10 minutes'
     WAREHOUSE = SFE_DOCUMENT_AI_WH
+    REFRESH_MODE = INCREMENTAL
     COMMENT = 'DEMO: swiftclaw - AI_PARSE_DOCUMENT results | Expires: 2026-02-20 | Author: SE Community'
 AS
 SELECT
@@ -178,7 +189,7 @@ FROM (
         catalog.upload_date,
         AI_PARSE_DOCUMENT(
             TO_FILE(catalog.stage_name, catalog.file_path),
-            OBJECT_CONSTRUCT('mode', 'LAYOUT', 'page_split', FALSE)
+            {'mode': 'LAYOUT', 'page_split': FALSE, 'extract_images': TRUE}
         ) AS parsed_content
     FROM RAW_DOCUMENT_CATALOG catalog
     WHERE catalog.file_format = 'PDF'
@@ -191,6 +202,7 @@ FROM (
 CREATE OR REPLACE DYNAMIC TABLE STG_TRANSLATED_CONTENT
     TARGET_LAG = '10 minutes'
     WAREHOUSE = SFE_DOCUMENT_AI_WH
+    REFRESH_MODE = INCREMENTAL
     COMMENT = 'DEMO: swiftclaw - AI_TRANSLATE results | Expires: 2026-02-20 | Author: SE Community'
 AS
 SELECT
@@ -213,140 +225,84 @@ FROM (
 ) parsed;
 
 -- ============================================================================
--- STAGE 3: ENRICH DOCUMENTS (AI_COMPLETE VIA TASK)
+-- STAGE 3: ENRICH DOCUMENTS (AI_EXTRACT + AI_CLASSIFY VIA DYNAMIC TABLE)
 -- ============================================================================
+-- MODERNIZED (2026-02-17): Replaced AI_COMPLETE with purpose-built functions:
+--   AI_EXTRACT (GA Oct 2025): Structured entity extraction directly from file.
+--     Handles parsing + multilingual extraction in one call (29 languages).
+--     Arctic-Extract model benchmarks 81.18 ANLS (beats Claude 4 Sonnet).
+--   AI_CLASSIFY (GA Jun 2025): Purpose-built classification with label descriptions.
+--     Supports up to 500 labels, multi-label, and few-shot examples.
+-- Confidence score derived from field extraction completeness (more meaningful
+-- than LLM self-assessment).
 
-CREATE OR REPLACE TABLE STG_ENRICHED_DOCUMENTS (
-    document_id STRING,
-    document_type STRING,
-    priority_level STRING,
-    business_category STRING,
-    total_amount NUMBER,
-    currency STRING,
-    document_date DATE,
-    vendor_territory STRING,
-    confidence_score NUMBER,
-    enrichment_details VARIANT,
-    enriched_at TIMESTAMP_NTZ
-)
-COMMENT = 'DEMO: swiftclaw - AI_COMPLETE structured enrichment | Expires: 2026-02-20 | Author: SE Community';
-
-CREATE OR REPLACE PROCEDURE REFRESH_ENRICHED_DOCUMENTS()
-RETURNS STRING
-LANGUAGE SQL
-AS
-$$
-BEGIN
-    INSERT INTO STG_ENRICHED_DOCUMENTS (
-        document_id,
-        document_type,
-        priority_level,
-        business_category,
-        total_amount,
-        currency,
-        document_date,
-        vendor_territory,
-        confidence_score,
-        enrichment_details,
-        enriched_at
-    )
-    SELECT
-        base.document_id,
-        COALESCE(enrichment_json:document_type::STRING, base.catalog_document_type) AS document_type,
-        enrichment_json:priority_level::STRING AS priority_level,
-        enrichment_json:business_category::STRING AS business_category,
-        TRY_TO_NUMBER(enrichment_json:total_amount::STRING) AS total_amount,
-        COALESCE(enrichment_json:currency::STRING, 'USD') AS currency,
-        TRY_TO_DATE(enrichment_json:document_date::STRING) AS document_date,
-        enrichment_json:vendor_territory::STRING AS vendor_territory,
-        TRY_TO_NUMBER(enrichment_json:confidence_score::STRING) AS confidence_score,
-        enrichment_json AS enrichment_details,
-        CURRENT_TIMESTAMP() AS enriched_at
-    FROM (
-        SELECT
-            parsed.document_id,
-            parsed.document_type AS catalog_document_type,
-            COALESCE(trans.translated_text, parsed.parsed_content:content::STRING) AS analysis_text
-        FROM STG_PARSED_DOCUMENTS parsed
-        LEFT JOIN STG_TRANSLATED_CONTENT trans
-            ON parsed.document_id = trans.document_id
-        WHERE parsed.parsed_content:content::STRING IS NOT NULL
-          AND NOT EXISTS (
-              SELECT 1
-              FROM STG_ENRICHED_DOCUMENTS existing
-              WHERE existing.document_id = parsed.document_id
-          )
-    ) base,
-    LATERAL (
-        SELECT TRY_PARSE_JSON(
-            AI_COMPLETE(
-                model => 'snowflake-arctic',
-                prompt => CONCAT(
-                    'You are a data extraction system. Return only JSON that matches the schema. ',
-                    'Use enum values exactly as provided. Use null when unknown. ',
-                    'Use ISO date format YYYY-MM-DD for document_date. ',
-                    'Document text: ',
-                    SUBSTR(COALESCE(base.analysis_text, ''), 1, 12000)
-                ),
-                model_parameters => OBJECT_CONSTRUCT('temperature', 0, 'max_tokens', 2048),
-                response_format => OBJECT_CONSTRUCT(
-                    'type', 'json',
-                    'schema', OBJECT_CONSTRUCT(
-                        'type', 'object',
-                        'additionalProperties', FALSE,
-                        'properties', OBJECT_CONSTRUCT(
-                            'document_type', OBJECT_CONSTRUCT(
-                                'type', 'string',
-                                'enum', ARRAY_CONSTRUCT('INVOICE', 'ROYALTY_STATEMENT', 'CONTRACT', 'OTHER')
-                            ),
-                            'priority_level', OBJECT_CONSTRUCT(
-                                'type', 'string',
-                                'enum', ARRAY_CONSTRUCT('HIGH', 'MEDIUM', 'LOW')
-                            ),
-                            'business_category', OBJECT_CONSTRUCT(
-                                'type', 'string',
-                                'enum', ARRAY_CONSTRUCT(
-                                    'ACCOUNTS_PAYABLE',
-                                    'RIGHTS_MANAGEMENT',
-                                    'LEGAL_COMPLIANCE',
-                                    'GENERAL'
-                                )
-                            ),
-                            'total_amount', OBJECT_CONSTRUCT('type', 'number'),
-                            'currency', OBJECT_CONSTRUCT('type', 'string'),
-                            'document_date', OBJECT_CONSTRUCT('type', 'string'),
-                            'vendor_territory', OBJECT_CONSTRUCT('type', 'string'),
-                            'confidence_score', OBJECT_CONSTRUCT('type', 'number')
-                        ),
-                        'required', ARRAY_CONSTRUCT(
-                            'document_type',
-                            'priority_level',
-                            'business_category',
-                            'total_amount',
-                            'currency',
-                            'document_date',
-                            'vendor_territory',
-                            'confidence_score'
-                        )
-                    )
-                )
-            )
-        ) AS enrichment_json
-    ) enriched;
-
-    RETURN 'STG_ENRICHED_DOCUMENTS refreshed';
-END;
-$$;
-
-CALL REFRESH_ENRICHED_DOCUMENTS();
-
-CREATE OR REPLACE TASK REFRESH_ENRICHED_DOCUMENTS_TASK
+CREATE OR REPLACE DYNAMIC TABLE STG_ENRICHED_DOCUMENTS
+    TARGET_LAG = '10 minutes'
     WAREHOUSE = SFE_DOCUMENT_AI_WH
-    SCHEDULE = '10 MINUTE'
+    REFRESH_MODE = INCREMENTAL
+    COMMENT = 'DEMO: swiftclaw - AI_EXTRACT + AI_CLASSIFY enrichment | Expires: 2026-02-20 | Author: SE Community'
 AS
-    CALL REFRESH_ENRICHED_DOCUMENTS();
-
-ALTER TASK REFRESH_ENRICHED_DOCUMENTS_TASK RESUME;
+SELECT
+    base.document_id,
+    -- AI_CLASSIFY validates/overrides catalog classification
+    COALESCE(base.ai_document_type, base.catalog_document_type) AS document_type,
+    base.extraction_result:response:priority_level::STRING AS priority_level,
+    base.extraction_result:response:business_category::STRING AS business_category,
+    TRY_TO_NUMBER(base.extraction_result:response:total_amount::STRING) AS total_amount,
+    COALESCE(base.extraction_result:response:currency::STRING, 'USD') AS currency,
+    TRY_TO_DATE(base.extraction_result:response:document_date::STRING) AS document_date,
+    base.extraction_result:response:vendor_territory::STRING AS vendor_territory,
+    -- Derived confidence: proportion of non-null extracted fields (6 fields)
+    ROUND((
+        IFF(base.extraction_result:response:priority_level IS NOT NULL, 1, 0) +
+        IFF(base.extraction_result:response:business_category IS NOT NULL, 1, 0) +
+        IFF(base.extraction_result:response:total_amount IS NOT NULL, 1, 0) +
+        IFF(base.extraction_result:response:currency IS NOT NULL, 1, 0) +
+        IFF(base.extraction_result:response:document_date IS NOT NULL, 1, 0) +
+        IFF(base.extraction_result:response:vendor_territory IS NOT NULL, 1, 0)
+    ) / 6.0, 2) AS confidence_score,
+    base.extraction_result AS enrichment_details,
+    base.processed_at AS enriched_at
+FROM (
+    SELECT
+        catalog.document_id,
+        catalog.document_type AS catalog_document_type,
+        catalog.stage_name,
+        catalog.file_path,
+        parsed.processed_at,
+        -- AI_CLASSIFY: Purpose-built document type classification from text
+        AI_CLASSIFY(
+            SUBSTR(
+                COALESCE(trans.translated_text, parsed.parsed_content:content::STRING),
+                1, 4000
+            ),
+            [
+                {'label': 'INVOICE', 'description': 'Billing document with line items, amounts, and payment terms'},
+                {'label': 'ROYALTY_STATEMENT', 'description': 'Entertainment royalty payment or distribution report'},
+                {'label': 'CONTRACT', 'description': 'Legal agreement, license, or contract between parties'},
+                {'label': 'OTHER', 'description': 'Document not matching invoice, royalty, or contract'}
+            ]
+        ) AS ai_document_type,
+        -- AI_EXTRACT: Purpose-built entity extraction directly from file
+        AI_EXTRACT(
+            file => TO_FILE(catalog.stage_name, catalog.file_path),
+            responseFormat => {
+                'priority_level': 'What is the urgency level? Answer exactly: HIGH, MEDIUM, or LOW',
+                'business_category': 'What business category? Answer exactly: ACCOUNTS_PAYABLE, RIGHTS_MANAGEMENT, LEGAL_COMPLIANCE, or GENERAL',
+                'total_amount': 'What is the total monetary amount? Return only the number',
+                'currency': 'What currency is used? Return the ISO code like USD, EUR, GBP',
+                'document_date': 'What is the primary date? Use format YYYY-MM-DD',
+                'vendor_territory': 'What is the vendor name, payee, or territory?'
+            }
+        ) AS extraction_result
+    FROM RAW_DOCUMENT_CATALOG catalog
+    JOIN STG_PARSED_DOCUMENTS parsed
+        ON catalog.document_id = parsed.document_id
+    LEFT JOIN STG_TRANSLATED_CONTENT trans
+        ON parsed.document_id = trans.document_id
+    WHERE catalog.file_format = 'PDF'
+      AND parsed.parsed_content:content::STRING IS NOT NULL
+) base;
 
 -- ============================================================================
 -- STAGE 4: AGGREGATE BUSINESS INSIGHTS
@@ -355,6 +311,7 @@ ALTER TASK REFRESH_ENRICHED_DOCUMENTS_TASK RESUME;
 CREATE OR REPLACE DYNAMIC TABLE FCT_DOCUMENT_INSIGHTS
     TARGET_LAG = '10 minutes'
     WAREHOUSE = SFE_DOCUMENT_AI_WH
+    REFRESH_MODE = INCREMENTAL
     COMMENT = 'DEMO: swiftclaw - Aggregated document insights | Expires: 2026-02-20 | Author: SE Community'
 AS
 SELECT
@@ -365,7 +322,6 @@ SELECT
     enriched.currency,
     enriched.document_date,
     enriched.vendor_territory,
-    CAST(NULL AS NUMBER) AS processing_time_seconds,
     enriched.confidence_score AS overall_confidence_score,
     CASE
         WHEN enriched.document_type IS NULL THEN TRUE
@@ -382,14 +338,14 @@ SELECT
         ELSE NULL
     END AS manual_review_reason,
     catalog.upload_date AS insight_created_at,
-    OBJECT_CONSTRUCT(
-        'priority_level', enriched.priority_level,
-        'business_category', enriched.business_category,
-        'source_language', catalog.original_language,
-        'extraction_mode', parsed.extraction_mode,
-        'page_count', parsed.page_count,
-        'catalog_metadata', catalog.metadata
-    ) AS metadata
+    {
+        'priority_level': enriched.priority_level,
+        'business_category': enriched.business_category,
+        'source_language': catalog.original_language,
+        'extraction_mode': parsed.extraction_mode,
+        'page_count': parsed.page_count,
+        'catalog_metadata': catalog.metadata
+    } AS metadata
 FROM RAW_DOCUMENT_CATALOG catalog
 LEFT JOIN STG_PARSED_DOCUMENTS parsed
     ON catalog.document_id = parsed.document_id
@@ -399,54 +355,68 @@ LEFT JOIN STG_ENRICHED_DOCUMENTS enriched
 -- ============================================================================
 -- MONITORING VIEW
 -- ============================================================================
+-- OPTIMIZED (2026-02-17): Consolidated 14 scalar subqueries into 5 table scans
+-- using conditional aggregation. Each source table is scanned exactly once.
 
 CREATE OR REPLACE VIEW V_PROCESSING_METRICS
 COMMENT = 'DEMO: swiftclaw - Real-time pipeline monitoring metrics | Expires: 2026-02-20 | Author: SE Community'
 AS
-WITH pipeline_stats AS (
+WITH catalog_stats AS (
+    SELECT COUNT(*) AS total_catalog_documents
+    FROM RAW_DOCUMENT_CATALOG
+),
+parsed_stats AS (
     SELECT
-        (SELECT COUNT(*) FROM RAW_DOCUMENT_CATALOG) AS total_catalog_documents,
-        (SELECT COUNT(*) FROM STG_PARSED_DOCUMENTS) AS total_parsed,
-        (SELECT COUNT(*) FROM STG_TRANSLATED_CONTENT) AS total_translated,
-        (SELECT COUNT(*) FROM STG_ENRICHED_DOCUMENTS) AS total_enriched,
-        (SELECT COUNT(*) FROM FCT_DOCUMENT_INSIGHTS) AS total_insights,
-        (SELECT AVG(overall_confidence_score) FROM FCT_DOCUMENT_INSIGHTS) AS avg_overall_confidence,
-        (SELECT COUNT(*) FROM FCT_DOCUMENT_INSIGHTS WHERE requires_manual_review = TRUE)
-            AS documents_needing_review,
-        (SELECT SUM(total_amount) FROM FCT_DOCUMENT_INSIGHTS WHERE document_type = 'INVOICE')
-            AS total_invoice_value,
-        (SELECT SUM(total_amount) FROM FCT_DOCUMENT_INSIGHTS WHERE document_type = 'ROYALTY_STATEMENT')
-            AS total_royalty_value,
-        (SELECT SUM(total_amount) FROM FCT_DOCUMENT_INSIGHTS WHERE document_type = 'CONTRACT')
-            AS total_contract_value,
-        (SELECT MAX(processed_at) FROM STG_PARSED_DOCUMENTS) AS last_parsing_timestamp,
-        (SELECT MAX(translated_at) FROM STG_TRANSLATED_CONTENT) AS last_translation_timestamp,
-        (SELECT MAX(enriched_at) FROM STG_ENRICHED_DOCUMENTS) AS last_enrichment_timestamp,
-        (SELECT MAX(insight_created_at) FROM FCT_DOCUMENT_INSIGHTS) AS last_insight_timestamp
+        COUNT(*) AS total_parsed,
+        MAX(processed_at) AS last_parsing_timestamp
+    FROM STG_PARSED_DOCUMENTS
+),
+translated_stats AS (
+    SELECT
+        COUNT(*) AS total_translated,
+        MAX(translated_at) AS last_translation_timestamp
+    FROM STG_TRANSLATED_CONTENT
+),
+enriched_stats AS (
+    SELECT
+        COUNT(*) AS total_enriched,
+        MAX(enriched_at) AS last_enrichment_timestamp
+    FROM STG_ENRICHED_DOCUMENTS
+),
+insight_stats AS (
+    SELECT
+        COUNT(*) AS total_insights,
+        AVG(overall_confidence_score) AS avg_overall_confidence,
+        COUNT_IF(requires_manual_review) AS documents_needing_review,
+        SUM(IFF(document_type = 'INVOICE', total_amount, 0)) AS total_invoice_value,
+        SUM(IFF(document_type = 'ROYALTY_STATEMENT', total_amount, 0)) AS total_royalty_value,
+        SUM(IFF(document_type = 'CONTRACT', total_amount, 0)) AS total_contract_value,
+        MAX(insight_created_at) AS last_insight_timestamp
+    FROM FCT_DOCUMENT_INSIGHTS
 ),
 metrics AS (
     SELECT
-        total_catalog_documents,
-        total_parsed,
-        total_translated,
-        total_enriched,
-        total_insights,
-        avg_overall_confidence,
-        documents_needing_review,
-        total_invoice_value,
-        total_royalty_value,
-        total_contract_value,
-        last_parsing_timestamp,
-        last_translation_timestamp,
-        last_enrichment_timestamp,
-        last_insight_timestamp,
-        ROUND((total_insights::FLOAT / NULLIF(total_catalog_documents, 0)) * 100, 2)
+        c.total_catalog_documents,
+        p.total_parsed,
+        t.total_translated,
+        e.total_enriched,
+        i.total_insights,
+        i.avg_overall_confidence,
+        i.documents_needing_review,
+        i.total_invoice_value,
+        i.total_royalty_value,
+        i.total_contract_value,
+        p.last_parsing_timestamp,
+        t.last_translation_timestamp,
+        e.last_enrichment_timestamp,
+        i.last_insight_timestamp,
+        ROUND((i.total_insights::FLOAT / NULLIF(c.total_catalog_documents, 0)) * 100, 2)
             AS completion_percentage,
-        ROUND((documents_needing_review::FLOAT / NULLIF(total_insights, 0)) * 100, 2)
+        ROUND((i.documents_needing_review::FLOAT / NULLIF(i.total_insights, 0)) * 100, 2)
             AS manual_review_percentage,
-        ROUND(COALESCE(total_invoice_value, 0) + COALESCE(total_royalty_value, 0)
-            + COALESCE(total_contract_value, 0), 2) AS total_value_processed_usd
-    FROM pipeline_stats
+        ROUND(COALESCE(i.total_invoice_value, 0) + COALESCE(i.total_royalty_value, 0)
+            + COALESCE(i.total_contract_value, 0), 2) AS total_value_processed_usd
+    FROM catalog_stats c, parsed_stats p, translated_stats t, enriched_stats e, insight_stats i
 )
 SELECT
     total_catalog_documents AS catalog_documents,

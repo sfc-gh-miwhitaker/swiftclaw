@@ -6,12 +6,12 @@
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
 > **DEMONSTRATION PROJECT - EXPIRES: 2026-02-20**
-> This demo uses Snowflake AI Functions current as of November 2024.
+> This demo uses Snowflake AI Functions validated as of February 2026.
 > After expiration, this repository will be archived and made private.
 
 **Author:** SE Community
 **Purpose:** Reference implementation for AI-powered document processing in media & entertainment
-**Created:** 2025-11-24 | **Expires:** 2026-02-20 (30 days) | **Status:** ACTIVE
+**Created:** 2025-11-24 | **Updated:** 2026-02-17 | **Expires:** 2026-02-20 | **Status:** ACTIVE
 
 ---
 
@@ -30,13 +30,14 @@ This demo showcases **REAL** Snowflake Cortex AI Functions for automating docume
 ### AI Pipeline (Dynamic Tables):
 
 ```
-Documents on Stage -> AI_PARSE_DOCUMENT -> AI_TRANSLATE (non-EN) -> AI_COMPLETE -> Analytics
+Documents on Stage -> AI_PARSE_DOCUMENT -> AI_TRANSLATE (non-EN) -> AI_EXTRACT + AI_CLASSIFY -> Analytics
 ```
 
 **Production-Ready AI Functions:**
-- **AI_PARSE_DOCUMENT** - Extract text and layout from PDF/DOCX files on stages (GA)
+- **AI_PARSE_DOCUMENT** - Extract text, layout, and images from PDF/DOCX files on stages (GA)
 - **AI_TRANSLATE** - Context-aware translation for 20+ languages (GA)
-- **AI_COMPLETE** - Structured enrichment (classification + extraction) with JSON schema (GA)
+- **AI_EXTRACT** - Purpose-built structured entity extraction directly from files (GA)
+- **AI_CLASSIFY** - Purpose-built document type classification with label descriptions (GA)
 - **SQL Aggregation** - Standard SQL for business insights
 - **Streamlit UI** - Business-user friendly dashboard with real-time metrics
 
@@ -67,7 +68,7 @@ Follow these steps in order to deploy and explore the demo:
 **Total setup time: ~30 minutes**
 
 **Additional Documentation:**
-- `docs/05-CHANGELOG-UPDATETHEWORLD.md` - Modernization updates (2025-12-09)
+- `docs/05-CHANGELOG-UPDATETHEWORLD.md` - Modernization audit (2026-02-17)
 
 ---
 
@@ -102,10 +103,10 @@ Leverage Snowflake AI Functions to:
 2. CATALOG
    Stage directory -> RAW_DOCUMENT_CATALOG (table)
 
-3. AI PROCESSING (Dynamic Tables + Tasks)
-   - STG_PARSED_DOCUMENTS (AI_PARSE_DOCUMENT, dynamic table)
+3. AI PROCESSING (Dynamic Tables, incremental refresh)
+   - STG_PARSED_DOCUMENTS (AI_PARSE_DOCUMENT + extract_images, dynamic table)
    - STG_TRANSLATED_CONTENT (AI_TRANSLATE, dynamic table)
-   - STG_ENRICHED_DOCUMENTS (AI_COMPLETE structured output, task)
+   - STG_ENRICHED_DOCUMENTS (AI_EXTRACT + AI_CLASSIFY, dynamic table)
 
 4. INSIGHTS
    FCT_DOCUMENT_INSIGHTS (aggregated metrics)
@@ -123,7 +124,7 @@ Leverage Snowflake AI Functions to:
 - `RAW_DOCUMENT_CATALOG` - Stage directory table with document metadata
 - `STG_PARSED_DOCUMENTS` - AI_PARSE_DOCUMENT results (dynamic table)
 - `STG_TRANSLATED_CONTENT` - AI_TRANSLATE results (dynamic table)
-- `STG_ENRICHED_DOCUMENTS` - AI_COMPLETE structured enrichment (task-populated table)
+- `STG_ENRICHED_DOCUMENTS` - AI_EXTRACT + AI_CLASSIFY enrichment (dynamic table)
 - `FCT_DOCUMENT_INSIGHTS` - Aggregated business insights (dynamic table)
 - `V_PROCESSING_METRICS` - Real-time monitoring view
 
@@ -146,7 +147,7 @@ See `diagrams/` for detailed architecture diagrams.
 | Table | `SWIFTCLAW` | `RAW_DOCUMENT_CATALOG` | Stage directory metadata |
 | Dynamic Table | `SWIFTCLAW` | `STG_PARSED_DOCUMENTS` | AI parsing results |
 | Dynamic Table | `SWIFTCLAW` | `STG_TRANSLATED_CONTENT` | Translated text |
-| Table | `SWIFTCLAW` | `STG_ENRICHED_DOCUMENTS` | AI_COMPLETE enrichment |
+| Dynamic Table | `SWIFTCLAW` | `STG_ENRICHED_DOCUMENTS` | AI_EXTRACT + AI_CLASSIFY enrichment |
 | Dynamic Table | `SWIFTCLAW` | `FCT_DOCUMENT_INSIGHTS` | Aggregated metrics |
 | View | `SWIFTCLAW` | `V_PROCESSING_METRICS` | Monitoring dashboard |
 | Streamlit | `SWIFTCLAW` | `SFE_DOCUMENT_DASHBOARD` | Interactive UI |
@@ -179,11 +180,13 @@ See `diagrams/` for detailed architecture diagrams.
 ## Technologies Used
 
 **Snowflake Cortex AI Functions (All GA/Production-Ready):**
-- **AI_PARSE_DOCUMENT** - Document parsing with OCR and layout extraction
+- **AI_PARSE_DOCUMENT** - Document parsing with OCR, layout extraction, and image extraction
 - **AI_TRANSLATE** - Neural machine translation (20+ languages)
-- **AI_COMPLETE** - Structured enrichment with JSON schema
+- **AI_EXTRACT** - Structured entity extraction directly from files (29 languages)
+- **AI_CLASSIFY** - Purpose-built document classification with label descriptions
 
 **Snowflake Platform Features:**
+- **Dynamic Tables** - Automated incremental pipeline orchestration (REFRESH_MODE = INCREMENTAL)
 - **Internal Stages** - Document storage (@DOCUMENT_STAGE)
 - **Streamlit in Snowflake** - Native UI with no external hosting
 - **Git Integration** - GitRepository for code deployment
@@ -277,14 +280,14 @@ The `pdfs/` folder contains multilingual bridge loan contracts:
 
 ### 1. Parse Documents with AI_PARSE_DOCUMENT
 ```sql
--- Extract text and layout from documents on stage
+-- Extract text, layout, and images from documents on stage
 -- AI_PARSE_DOCUMENT takes 2 arguments: FILE object, options
 SELECT
     catalog.document_id,
     catalog.file_name,
     AI_PARSE_DOCUMENT(
-        TO_FILE('@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE', 'invoices/invoice_001.pdf'),  -- FILE object
-        OBJECT_CONSTRUCT('mode', 'LAYOUT')                        -- Options: 'OCR' or 'LAYOUT'
+        TO_FILE('@SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE', 'invoices/invoice_001.pdf'),
+        {'mode': 'LAYOUT', 'extract_images': TRUE}  -- LAYOUT + image extraction (Preview)
     ) AS parsed_document;
 
 -- Or using catalog table (stage and path stored separately):
@@ -292,7 +295,7 @@ SELECT
     catalog.document_id,
     AI_PARSE_DOCUMENT(
         TO_FILE(catalog.stage_name, catalog.file_path),
-        OBJECT_CONSTRUCT('mode', 'LAYOUT')
+        {'mode': 'LAYOUT', 'extract_images': TRUE}
     ) AS parsed_document
 FROM SWIFTCLAW.RAW_DOCUMENT_CATALOG catalog
 WHERE catalog.document_type = 'INVOICE'
@@ -331,9 +334,11 @@ FROM SWIFTCLAW.STG_TRANSLATED_CONTENT
 LIMIT 5;
 ```
 
-### 3. Enrich with AI_COMPLETE Structured Output
+### 3. Enrich with AI_EXTRACT + AI_CLASSIFY
 
 ```sql
+-- AI_EXTRACT extracts structured entities directly from files
+-- AI_CLASSIFY validates document type using purpose-built classification
 SELECT
     document_id,
     document_type,

@@ -31,7 +31,7 @@
  *   snowsql -f sql/99_cleanup/teardown_all.sql
  *
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-20
+ * Created: 2025-11-24 | Updated: 2026-02-17 | Expires: 2026-02-20
  ******************************************************************************/
 
 -- Switch to ACCOUNTADMIN for cleanup
@@ -103,13 +103,16 @@ DROP VIEW IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.V_PROCESSING_METRICS;
 -- ============================================================================
 -- STEP 2b: DROP TASKS AND PROCEDURES
 -- ============================================================================
+-- NOTE: REFRESH_ENRICHED_DOCUMENTS_TASK/PROCEDURE removed in 2026-02-17
+-- modernization (STG_ENRICHED_DOCUMENTS is now a Dynamic Table).
+-- Kept here with IF EXISTS for backward compatibility with older deployments.
 
 DROP TASK IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.REFRESH_DOCUMENT_CATALOG_TASK;
 DROP PROCEDURE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.REFRESH_DOCUMENT_CATALOG();
 DROP TASK IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.REFRESH_ENRICHED_DOCUMENTS_TASK;
 DROP PROCEDURE IF EXISTS SNOWFLAKE_EXAMPLE.SWIFTCLAW.REFRESH_ENRICHED_DOCUMENTS();
 
--- View has been dropped
+-- Tasks and procedures have been dropped
 
 -- ============================================================================
 -- STEP 3: DROP DYNAMIC TABLES (in dependency order)

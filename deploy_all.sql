@@ -26,9 +26,10 @@
  *   - Deploys Streamlit dashboard for document processing UI
  *
  * AI FUNCTIONS USED (All GA/Production-Ready):
- *   - AI_PARSE_DOCUMENT: Extract text and layout from documents
+ *   - AI_PARSE_DOCUMENT: Extract text, layout, and images from documents
  *   - AI_TRANSLATE: Translate multilingual content
- *   - AI_COMPLETE: Structured enrichment (classification + extraction)
+ *   - AI_EXTRACT: Structured entity extraction directly from files
+ *   - AI_CLASSIFY: Purpose-built document type classification
  *
  * REQUIREMENTS:
  *   - ACCOUNTADMIN role (for API integration creation)
@@ -47,7 +48,7 @@
  *
  * GitHub Repository: https://github.com/sfc-gh-miwhitaker/swiftclaw
  * Author: SE Community
- * Created: 2025-11-24 | Updated: 2026-01-21 | Expires: 2026-02-20 (30 days)
+ * Created: 2025-11-24 | Updated: 2026-02-17 | Expires: 2026-02-20 (30 days)
  ******************************************************************************/
 
 -- ============================================================================
@@ -220,8 +221,9 @@ ALTER STAGE SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE REFRESH;
 -- ============================================================================
 -- SECTION 7: DYNAMIC TABLE PIPELINE (from Git Repository)
 -- ============================================================================
--- This script creates the catalog view, Dynamic Tables, and monitoring view.
--- New documents appear automatically once uploaded to the stage.
+-- This script creates the catalog table, Dynamic Tables (all INCREMENTAL),
+-- and monitoring view. All AI processing uses Dynamic Tables for automated
+-- orchestration. New documents appear automatically once uploaded to the stage.
 
 EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.sfe_swiftclaw_repo/branches/main/sql/03_ai_processing/01_create_dynamic_tables.sql;
 
@@ -273,8 +275,9 @@ GRANT ROLE SFE_DEMO_ROLE TO ROLE SYSADMIN;
  *   - Schema: SWIFTCLAW
  *   - Stage: DOCUMENT_STAGE (for file uploads)
  *   - Dynamic Tables: STG_PARSED_DOCUMENTS, STG_TRANSLATED_CONTENT,
- *     STG_ENRICHED_DOCUMENTS, FCT_DOCUMENT_INSIGHTS
+ *     STG_ENRICHED_DOCUMENTS (AI_EXTRACT + AI_CLASSIFY), FCT_DOCUMENT_INSIGHTS
  *   - Views: RAW_DOCUMENT_CATALOG, V_PROCESSING_METRICS
+ *   - All Dynamic Tables use REFRESH_MODE = INCREMENTAL for cost optimization
  *   - Streamlit: SFE_DOCUMENT_DASHBOARD
  *   - Role: SFE_DEMO_ROLE
  *

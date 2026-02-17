@@ -159,7 +159,6 @@ SELECT
     requires_manual_review,
     metadata:priority_level::STRING AS priority_level,
     metadata:business_category::STRING AS business_category,
-    processing_time_seconds,
     insight_created_at
 FROM SNOWFLAKE_EXAMPLE.SWIFTCLAW.FCT_DOCUMENT_INSIGHTS
 WHERE 1=1

@@ -30,7 +30,7 @@ flowchart TD
         Parsed[STG_PARSED_DOCUMENTS]
         Translate[AI_TRANSLATE]
         Translated[STG_TRANSLATED_CONTENT]
-        Enrich[AI_COMPLETE]
+        Enrich[AI_EXTRACT + AI_CLASSIFY]
         Enriched[STG_ENRICHED_DOCUMENTS]
     end
 
@@ -53,9 +53,10 @@ flowchart TD
     Parsed -->|Non-EN Text| Translate
     Translate -->|Translated Text| Translated
 
-    Parsed -->|Document Text| Enrich
+    Catalog -->|File Path| Enrich
+    Parsed -->|Parsed Text| Enrich
     Translated -->|Translated Text| Enrich
-    Enrich -->|Task Output| Enriched
+    Enrich -->|Dynamic Table| Enriched
 
     Enriched -->|Aggregate| Insights
     Insights -->|Monitor| Metrics
@@ -83,9 +84,9 @@ flowchart TD
 **Output:** Translated text in `STG_TRANSLATED_CONTENT`  
 
 ### Stage 4: Enrichment
-**Input:** Parsed or translated text  
-**Process:** Task calls `AI_COMPLETE` to produce structured JSON  
-**Output:** Enriched fields in `STG_ENRICHED_DOCUMENTS`  
+**Input:** File paths from catalog + parsed/translated text  
+**Process:** `AI_EXTRACT` extracts structured entities directly from files; `AI_CLASSIFY` classifies document type from parsed text  
+**Output:** Enriched fields in `STG_ENRICHED_DOCUMENTS` with derived confidence score  
 
 ### Stage 5: Analytics
 **Input:** Enrichment outputs  
