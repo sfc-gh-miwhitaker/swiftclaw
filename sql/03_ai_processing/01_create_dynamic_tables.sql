@@ -26,6 +26,9 @@
  *   - V_PROCESSING_METRICS: 14 subqueries -> 5 scans (conditional aggregation)
  *   - OBJECT_CONSTRUCT replaced with object literal syntax
  *
+ * BUG FIX (2026-02-20):
+ *   - AI_CLASSIFY output extraction: :labels[0]::STRING (was using raw JSON object)
+ *
  * REQUIREMENTS:
  *   - Documents uploaded to @SNOWFLAKE_EXAMPLE.SWIFTCLAW.DOCUMENT_STAGE
  *   - SNOWFLAKE.CORTEX_USER database role granted
@@ -244,8 +247,8 @@ CREATE OR REPLACE DYNAMIC TABLE STG_ENRICHED_DOCUMENTS
 AS
 SELECT
     base.document_id,
-    -- AI_CLASSIFY validates/overrides catalog classification
-    COALESCE(base.ai_document_type, base.catalog_document_type) AS document_type,
+    -- AI_CLASSIFY returns {"labels": [...]}, extract first label as STRING
+    COALESCE(base.ai_document_type:labels[0]::STRING, base.catalog_document_type) AS document_type,
     base.extraction_result:response:priority_level::STRING AS priority_level,
     base.extraction_result:response:business_category::STRING AS business_category,
     TRY_TO_NUMBER(base.extraction_result:response:total_amount::STRING) AS total_amount,
