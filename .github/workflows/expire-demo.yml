@@ -2,17 +2,15 @@ name: Archive Demo on Expiration
 
 on:
   schedule:
-    # Run daily at 00:00 UTC to check expiration
     - cron: '0 0 * * *'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   check-expiration:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       issues: write
-      administration: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,6 +26,7 @@ jobs:
 
           if [[ "$CURRENT_DATE" > "$EXPIRATION_DATE" ]] || [[ "$CURRENT_DATE" == "$EXPIRATION_DATE" ]]; then
             echo "expired=true" >> $GITHUB_OUTPUT
+            echo "expiration_date=$EXPIRATION_DATE" >> $GITHUB_OUTPUT
             echo "⚠️ Demo has expired!"
           else
             echo "expired=false" >> $GITHUB_OUTPUT
@@ -39,22 +38,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          EXPIRATION_DATE=$(grep -oP 'EXPIRES:\s*\K\d{4}-\d{2}-\d{2}' deploy_all.sql | head -1)
-          gh issue create \
-            --title "Demo Expired - Repository Archived" \
-            --body "This demo project expired on $EXPIRATION_DATE and has been automatically archived. The repository is now private and read-only." \
-            --label "expired" || echo "⚠️ Issue creation failed (may already be archived)"
+          REPO="${{ github.repository }}"
+          EXPIRATION_DATE="${{ steps.check_date.outputs.expiration_date }}"
 
-      - name: Archive repository
-        if: steps.check_date.outputs.expired == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository }} \
-            -f archived=true \
-            -F private=true
-          echo "✅ Repository archived and made private"
+          EXISTING=$(gh issue list --label "expired" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$EXISTING" ]; then
+            echo "✅ Expiration issue #$EXISTING already exists, skipping"
+            exit 0
+          fi
+
+          gh issue create \
+            --title "Demo Expired — Archive This Repository" \
+            --body "This demo expired on **$EXPIRATION_DATE**.
+
+**To archive:** [Repository Settings → Danger Zone → Archive](https://github.com/$REPO/settings#danger-zone)
+
+Or extend the expiration date in \`deploy_all.sql\` and \`README.md\` if the demo is still needed." \
+            --label "expired"
+          echo "✅ Expiration issue created"
