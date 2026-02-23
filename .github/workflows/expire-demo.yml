@@ -1,4 +1,4 @@
-name: Archive Demo on Expiration
+name: Demo Expiration Check
 
 on:
   schedule:
@@ -27,32 +27,31 @@ jobs:
           if [[ "$CURRENT_DATE" > "$EXPIRATION_DATE" ]] || [[ "$CURRENT_DATE" == "$EXPIRATION_DATE" ]]; then
             echo "expired=true" >> $GITHUB_OUTPUT
             echo "expiration_date=$EXPIRATION_DATE" >> $GITHUB_OUTPUT
-            echo "⚠️ Demo has expired!"
           else
             echo "expired=false" >> $GITHUB_OUTPUT
-            echo "✅ Demo is still active"
           fi
 
       - name: Create expiration notice issue
         if: steps.check_date.outputs.expired == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EXPIRATION_DATE: ${{ steps.check_date.outputs.expiration_date }}
         run: |
-          REPO="${{ github.repository }}"
-          EXPIRATION_DATE="${{ steps.check_date.outputs.expiration_date }}"
-
           EXISTING=$(gh issue list --label "expired" --state open --json number --jq '.[0].number' 2>/dev/null || true)
           if [ -n "$EXISTING" ]; then
-            echo "✅ Expiration issue #$EXISTING already exists, skipping"
+            echo "Expiration issue #$EXISTING already exists, skipping"
             exit 0
           fi
 
+          BODY=$(cat <<EOF
+          This demo expired on **$EXPIRATION_DATE**.
+
+          To extend, update the expiration date in \`deploy_all.sql\` and \`README.md\`.
+          EOF
+          )
+
           gh issue create \
-            --title "Demo Expired — Archive This Repository" \
-            --body "This demo expired on **$EXPIRATION_DATE**.
-
-**To archive:** [Repository Settings → Danger Zone → Archive](https://github.com/$REPO/settings#danger-zone)
-
-Or extend the expiration date in \`deploy_all.sql\` and \`README.md\` if the demo is still needed." \
+            --title "Demo Expired" \
+            --body "$BODY" \
             --label "expired"
-          echo "✅ Expiration issue created"
