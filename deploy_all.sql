@@ -3,7 +3,7 @@
  *
  * NOT FOR PRODUCTION USE - EXAMPLE IMPLEMENTATION ONLY
  *
- * DEMONSTRATION PROJECT - EXPIRES: 2026-02-20
+ * DEMONSTRATION PROJECT - EXPIRES: 2026-08-23
  * This demo uses Snowflake AI Functions validated as of December 2025.
  * After expiration, this repository will be archived.
  *

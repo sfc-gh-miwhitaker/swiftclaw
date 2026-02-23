@@ -10,9 +10,9 @@ jobs:
   check-expiration:
     runs-on: ubuntu-latest
     permissions:
-      contents: write    # Needed to archive repository
-      issues: write      # Needed to create expiration issues
-      repository-projects: write  # Needed to modify repository settings
+      contents: write
+      issues: write
+      administration: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,13 +20,12 @@ jobs:
       - name: Check expiration date
         id: check_date
         run: |
-          # Extract expiration date from deploy_all.sql
           EXPIRATION_DATE=$(grep -oP 'EXPIRES:\s*\K\d{4}-\d{2}-\d{2}' deploy_all.sql | head -1)
           CURRENT_DATE=$(date -u +%Y-%m-%d)
-          
+
           echo "Expiration date: $EXPIRATION_DATE"
           echo "Current date: $CURRENT_DATE"
-          
+
           if [[ "$CURRENT_DATE" > "$EXPIRATION_DATE" ]] || [[ "$CURRENT_DATE" == "$EXPIRATION_DATE" ]]; then
             echo "expired=true" >> $GITHUB_OUTPUT
             echo "⚠️ Demo has expired!"
@@ -35,70 +34,27 @@ jobs:
             echo "✅ Demo is still active"
           fi
 
-      - name: Archive and make repository private
+      - name: Create expiration notice issue
         if: steps.check_date.outputs.expired == 'true'
         env:
-          GH_TOKEN: ${{ secrets.MASTER_PAT }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "🔍 Debugging information:"
-          echo "Repository: ${{ github.repository }}"
-          echo "Actor: ${{ github.actor }}"
-          
-          # Check if token is set
-          if [ -z "$GH_TOKEN" ]; then
-            echo "❌ ERROR: MASTER_PAT secret is not set or empty"
-            exit 1
-          else
-            echo "✅ MASTER_PAT secret is set (length: ${#GH_TOKEN})"
-          fi
-          
-          # Test token permissions first
-          echo "🔍 Testing token permissions..."
-          if ! gh api /repos/${{ github.repository }} --jq '.permissions' 2>&1; then
-            echo "❌ Failed to read repository permissions"
-            echo "Full error details:"
-            gh api /repos/${{ github.repository }} 2>&1 || true
-            exit 1
-          fi
-          
-          # Archive the repository
-          echo "📦 Attempting to archive repository..."
-          if ! gh api \
+          EXPIRATION_DATE=$(grep -oP 'EXPIRES:\s*\K\d{4}-\d{2}-\d{2}' deploy_all.sql | head -1)
+          gh issue create \
+            --title "Demo Expired - Repository Archived" \
+            --body "This demo project expired on $EXPIRATION_DATE and has been automatically archived. The repository is now private and read-only." \
+            --label "expired" || echo "⚠️ Issue creation failed (may already be archived)"
+
+      - name: Archive repository
+        if: steps.check_date.outputs.expired == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
             --method PATCH \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/${{ github.repository }} \
             -f archived=true \
-            -F private=true 2>&1; then
-            echo "❌ Failed to archive repository"
-            echo "This usually means:"
-            echo "1. Token lacks 'repo' scope"
-            echo "2. Token owner doesn't have admin rights"
-            echo "3. Token is expired or invalid"
-            exit 1
-          fi
-          
-          echo "✅ Repository archived successfully"
-
-      - name: Add expiration notice
-        if: steps.check_date.outputs.expired == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.MASTER_PAT }}
-        run: |
-          echo "📝 Creating expiration notice issue..."
-          # Create an issue documenting the expiration
-          if ! gh issue create \
-            --title "Demo Expired - Repository Archived" \
-            --body "This demo project expired on $(grep -oP 'EXPIRES:\s*\K\d{4}-\d{2}-\d{2}' deploy_all.sql | head -1) and has been automatically archived. The repository is now private and read-only." \
-            --label "expired" 2>&1; then
-            echo "⚠️ Failed to create issue (may be due to archived state)"
-            echo "This is expected if repository was already archived"
-          else
-            echo "✅ Expiration issue created"
-          fi
-
-      - name: Notify on success
-        if: steps.check_date.outputs.expired == 'true'
-        run: |
-          echo "✅ Repository archived successfully"
-          echo "The demo has been archived and made private"
+            -F private=true
+          echo "✅ Repository archived and made private"

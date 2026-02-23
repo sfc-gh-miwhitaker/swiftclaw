@@ -5,13 +5,13 @@
 ![Expires](https://img.shields.io/badge/Expires-2026--02--20-orange)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
-> **DEMONSTRATION PROJECT - EXPIRES: 2026-02-20**
+> **DEMONSTRATION PROJECT - EXPIRES: 2026-08-23**
 > This demo uses Snowflake AI Functions validated as of February 2026.
 > After expiration, this repository will be archived and made private.
 
 **Author:** SE Community
 **Purpose:** Reference implementation for AI-powered document processing in media & entertainment
-**Created:** 2025-11-24 | **Updated:** 2026-02-17 | **Expires:** 2026-02-20 | **Status:** ACTIVE
+**Created:** 2025-11-24 | **Updated:** 2026-02-23 | **Expires:** 2026-08-23 | **Status:** ACTIVE
 
 ---
 
@@ -422,4 +422,4 @@ Apache 2.0 - See LICENSE file for details
 
 ---
 
-**Demo Expiration:** This repository will be archived and made private on 2026-02-20
+**Demo Expiration:** This repository will be archived and made private on 2026-08-23

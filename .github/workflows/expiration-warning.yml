@@ -47,19 +47,11 @@ jobs:
       - name: Create expiration warning issue
         if: steps.check_date.outputs.should_warn == 'true'
         env:
-          GH_TOKEN: ${{ secrets.MASTER_PAT }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           DAYS=${{ steps.check_date.outputs.days_remaining }}
           EXPIRATION=${{ steps.check_date.outputs.expiration_date }}
-          
-          # Check if token is set
-          if [ -z "$GH_TOKEN" ]; then
-            echo "❌ ERROR: MASTER_PAT secret is not set"
-            echo "Falling back to GITHUB_TOKEN (may have limited permissions)"
-            export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          fi
-          
-          # Determine urgency level
+
           if [ "$DAYS" -eq 1 ]; then
             URGENCY="🚨 URGENT"
             LABEL="demo-expiration,urgent"
@@ -70,42 +62,34 @@ jobs:
             URGENCY="ℹ️ NOTICE"
             LABEL="demo-expiration,notice"
           fi
-          
-          BODY=$(cat <<EOF
-          This demo repository will expire on **$EXPIRATION** ($DAYS day(s) from now).
-          
+
+          BODY=$(cat <<'ISSUE_BODY'
+          This demo repository will expire on **EXPIRATION_PLACEHOLDER** (DAYS_PLACEHOLDER day(s) from now).
+
           **Actions Required:**
           - [ ] Extend expiration date if demo is still needed
           - [ ] Archive manually if demo is no longer needed
           - [ ] Update dependencies and validate syntax before extending
-          
+
           **What Happens After Expiration:**
           - Repository will be automatically archived
           - No further updates possible without unarchiving
           - Users searching GitHub will see it as archived/inactive
-          
+
           **To Extend Expiration:**
-          1. Update expiration date in \`deploy_all.sql\` header
+          1. Update expiration date in `deploy_all.sql` header
           2. Update README badges and documentation
           3. Validate all scripts still work with latest Snowflake features
           4. Commit and push changes
-          
-          This issue was automatically created by the demo expiration warning workflow.
-          EOF
+          ISSUE_BODY
           )
-          
-          # Create warning issue
+          BODY="${BODY//EXPIRATION_PLACEHOLDER/$EXPIRATION}"
+          BODY="${BODY//DAYS_PLACEHOLDER/$DAYS}"
+
           gh issue create \
             --title "$URGENCY: Demo Expires in $DAYS Day(s)" \
             --body "$BODY" \
-            --label "$LABEL" || {
-              echo "⚠️ Failed to create issue"
-              echo "This may be due to:"
-              echo "1. MASTER_PAT not set or lacks 'issues:write' permission"
-              echo "2. Repository settings restrict issue creation"
-              exit 1
-            }
-          
+            --label "$LABEL"
           echo "✅ Warning issue created successfully"
 
       - name: Summary
